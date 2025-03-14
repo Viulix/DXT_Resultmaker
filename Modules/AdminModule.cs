@@ -220,7 +220,6 @@ namespace DXT_Resultmaker.Modules
             int week = 0)
         {
             {
-                await DeferAsync(ephemeral: true);
                 // Get the current calendar week
                 int currentWeek = ISOWeek.GetWeekOfYear(DateTime.Now);
                 // Get the tier based on the user's roles
@@ -236,12 +235,13 @@ namespace DXT_Resultmaker.Modules
                         }
                     }
                 }
-                if (tier < 0) await FollowupAsync("You do not have any tier-roles. Either choose a tier manually or make sure you have your designated tier-role.", ephemeral: true);
+                if (tier < 0) await RespondAsync("You do not have any tier-roles. Either choose a tier manually or make sure you have your designated tier-role.", ephemeral: true);
 
                 if (week == 0)
                 {
                     week = currentWeek - HelperFactory.seasonCalenderWeek + 1;
                 }
+                await DeferAsync(ephemeral: false);
 
                 string subTeamName = string.Empty;
                 SaveData current_Data = JsonConvert.DeserializeObject<SaveData>(File.ReadAllText("./bot.json"));

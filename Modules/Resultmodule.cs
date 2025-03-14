@@ -13,7 +13,7 @@ namespace DXT_Resultmaker.Modules;
 public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
 {
 
-    /*
+    
     [SlashCommand("results", "Returns a formatted result message of current week.")]
     public async Task Results([Choice("1", "1"), Choice("2", "2"), Choice("3", "3"), Choice("4", "4"), Choice("5", "5"), Choice("6", "6"), Choice("7", "7"), Choice("8", "8"), Choice("9", "9")] string week = "")
     {
@@ -59,7 +59,7 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
         }
 
     }
-    */
+    
     /*
     [SlashCommand("setstandings", "Returns a formatted result message of current week.")]
     public async Task SetFranchiseStanding([Choice("1", "1"), Choice("2", "2"), Choice("3", "3"), Choice("4", "4"), Choice("5", "5"), Choice("6", "6"), Choice("7", "7"), Choice("8", "8"), Choice("9", "9")] string week)
