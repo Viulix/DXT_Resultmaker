@@ -48,7 +48,7 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
         string result;
         try
         {
-            string standing = manager.GetSpreadsheetData(SheetHandler.DXT_SHEET_URL, "WEEKSTANDING!B" + (week + 1));
+            string standing = manager.GetSpreadsheetData(SheetHandler.DXT_SHEET_URL, "WEEKSTANDING!B" + (Convert.ToInt16(week) + 1));
             result = "## Franchise Standing: " + standing;
             await FollowupAsync(cell + "\n" + result);
         }
