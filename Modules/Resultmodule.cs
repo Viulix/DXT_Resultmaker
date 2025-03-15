@@ -48,8 +48,7 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
         string result;
         try
         {
-            string standing = manager.GetSpreadsheetData(SheetHandler.ERS_SHEET_URL, "Rosters!L107");
-            standing = standing.Replace("Rank #", "");
+            string standing = manager.GetSpreadsheetData(SheetHandler.DXT_SHEET_URL, "WEEKSTANDING!B" + (week + 1));
             result = "## Franchise Standing: " + standing;
             await FollowupAsync(cell + "\n" + result);
         }
