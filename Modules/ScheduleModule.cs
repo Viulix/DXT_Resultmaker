@@ -123,7 +123,7 @@ namespace DXT_Resultmaker.Modules
                 .WithFooter("Requested By " + userName, Context.User.GetAvatarUrl())
                 .WithCurrentTimestamp()
                 //.WithImageUrl(bannerUrl)
-                .WithThumbnailUrl(logoUrl)
+                //.WithThumbnailUrl(logoUrl)
                 .Build();
 
 
