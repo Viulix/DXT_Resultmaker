@@ -1,5 +1,4 @@
-﻿using BallchasingSharp;
-using Discord;
+﻿using Discord;
 using Discord.Commands;
 using Discord.Interactions;
 using Discord.Net;
@@ -31,8 +30,6 @@ namespace DXT_Resultmaker
                 LogGatewayIntentWarnings = false
 
             };
-            // Konfigurationsdatei für Google Sheets
-            var scopes = new[] { Google.Apis.Sheets.v4.SheetsService.Scope.Spreadsheets };
 
             // Services
             var services = new ServiceCollection()
