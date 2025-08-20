@@ -15,7 +15,6 @@ namespace DXT_Resultmaker
 
                 if (string.IsNullOrEmpty(value))
                     return Task.FromResult(AutocompletionResult.FromSuccess());
-
                 var matches = HelperFactory.Franchises.Where(x => x.name.StartsWith(value, StringComparison.OrdinalIgnoreCase));
                 return Task.FromResult(AutocompletionResult.FromSuccess(matches.Select(x => new AutocompleteResult(x.name, x.name))));
             }
@@ -25,6 +24,5 @@ namespace DXT_Resultmaker
                 return Task.FromResult(AutocompletionResult.FromError(ex));
             }
         }
-        protected override string GetLogString(IInteractionContext context) => $"Accessing DB from {context.Guild}-{context.Channel}";
     }
 }

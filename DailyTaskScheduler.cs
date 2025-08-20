@@ -1,365 +1,274 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DXT_Resultmaker
 {
-    using Discord;
-    using Newtonsoft.Json;
-    using System.Globalization;
-    using System.Timers;
-
-    public static class DailyTaskScheduler
+    /// <summary>
+    /// Manages scheduled Discord tasks, such as sending and updating weekly messages.
+    /// </summary>
+    public class DailyTaskScheduler : IDisposable
     {
-        private static Timer dailyTimer;
-        private static Timer weeklyTimer;
-        public readonly static string franchiseName = "Team Dexterity";
-        private static readonly ulong fixturesChannelId = 1226613828838621337;
+        private readonly List<ulong> _channelIds; // The list of channel IDs where messages should be sent
+        private readonly Dictionary<ulong, ulong> _messageIds; // Maps channelId -> messageId
+        private Timer? _hourlyUpdateTimer; // Timer for hourly updates
+        private Timer? _weeklyMessageTimer; // Timer for sending new weekly messages
+        private readonly TimeZoneInfo _berlinTimeZone; // Berlin timezone
+        private int _currentWeek; // Keeps track of the week index
+        private readonly ulong _guildId; // The guild ID where the messages will be sent
 
-        // Initialisiert beide Timer beim Programmstart
-        public static void InitializeTasks()
+        public DailyTaskScheduler(List<ulong> channelIds)
         {
-            InitializeDailyTask();
-            InitializeWeeklyTask();
+            _channelIds = channelIds;
+            _messageIds = new Dictionary<ulong, ulong>();
+            _berlinTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+            _currentWeek = 0;
+            _guildId = 1093941417061126174; // Default guild ID, can be changed if needed
         }
 
-        // Täglicher Timer für Mitternacht (Berliner Zeit)
-        public static void InitializeDailyTask()
+        /// <summary>
+        /// Starts the scheduler. This sets up timers for weekly message creation and hourly updates.
+        /// </summary>
+        public async Task Start()
         {
-            TimeSpan timeToMidnight = GetTimeToNextMidnight().Add(-TimeSpan.FromMinutes(2));
-            dailyTimer = new Timer(timeToMidnight.TotalMilliseconds)
-            {
-                AutoReset = false
-            };
-            dailyTimer.Elapsed += (sender, e) =>
-            {
-                ExecuteDailyTask();
-                dailyTimer.Interval = TimeSpan.FromDays(1).TotalMilliseconds;
-                dailyTimer.Start();
-            };
-            Console.WriteLine($"{GetBerlinTime():HH:mm:ss} Initialized daily timer. Next call in {timeToMidnight.Hours}h {timeToMidnight.Minutes}min.");
-
-            dailyTimer.Start();
+            ScheduleWeeklyMessages();
+            ScheduleHourlyUpdates();
         }
 
-        // Wöchentlicher Timer für Montag 12:00 Uhr (Berliner Zeit)
-        public static void InitializeWeeklyTask()
+        /// <summary>
+        /// Schedules the sending of new messages every Monday at 14:00 Berlin time.
+        /// </summary>
+        private void ScheduleWeeklyMessages()
         {
-            TimeSpan timeToNextMondayNoon = GetTimeToNextMondayNoon();
-            weeklyTimer = new Timer(timeToNextMondayNoon.TotalMilliseconds)
-            {
-                AutoReset = false
-            };
-            weeklyTimer.Elapsed += (sender, e) =>
-            {
-                ExecuteWeeklyTask();
-                weeklyTimer.Interval = TimeSpan.FromDays(7).TotalMilliseconds;
-                weeklyTimer.Start();
-            };
-            Console.WriteLine($"{GetBerlinTime():HH:mm:ss} Initialized weekly timer. Next call in {timeToNextMondayNoon.Days} days and {timeToNextMondayNoon.Hours} hours.");
+            DateTime now = TimeZoneInfo.ConvertTime(DateTime.UtcNow, _berlinTimeZone);
+            DateTime nextMonday = now.Date.AddDays(((int)DayOfWeek.Monday - (int)now.DayOfWeek + 7) % 7);
+            DateTime nextMondayAt14 = nextMonday.AddHours(14);
 
-            weeklyTimer.Start();
+            if (now > nextMondayAt14)
+                nextMondayAt14 = nextMondayAt14.AddDays(7); // If already past, schedule for next week
+
+            TimeSpan initialDelay = nextMondayAt14 - now;
+            TimeSpan weeklyInterval = TimeSpan.FromDays(7);
+
+            _weeklyMessageTimer = new Timer(async _ => await SendWeeklyMessagesAsync(),
+                null, initialDelay, weeklyInterval);
         }
 
-        // Liefert die aktuelle Zeit in der Zeitzone Berlin
-        public static DateTime GetBerlinTime()
+        /// <summary>
+        /// Schedules hourly updates of all messages.
+        /// </summary>
+        private void ScheduleHourlyUpdates()
         {
-            TimeZoneInfo berlinZone;
-            try
-            {
-                // Gilt für Windows
-                berlinZone = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
-            }
-            catch (TimeZoneNotFoundException)
-            {
-                // Alternative für Linux
-                berlinZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
-            }
-            return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, berlinZone);
+            DateTime now = TimeZoneInfo.ConvertTime(DateTime.UtcNow, _berlinTimeZone);
+            DateTime nextHour = now.AddHours(1).Date.AddHours(now.AddHours(1).Hour);
+            TimeSpan initialDelay = nextHour - now;
+            TimeSpan hourlyInterval = TimeSpan.FromHours(1);
+
+            _hourlyUpdateTimer = new Timer(async _ => await UpdateFixtureMessagesAsync(),
+                null, initialDelay, hourlyInterval);
         }
 
-        // Berechnet die verbleibende Zeit bis zur nächsten Mitternacht (Berlin)
-        private static TimeSpan GetTimeToNextMidnight()
+        /// <summary>
+        /// Sends a new set of weekly messages (every Monday at 14:00).
+        /// This will overwrite the message ID list with new messages.
+        /// </summary>
+        private async Task SendWeeklyMessagesAsync()
         {
-            DateTime now = GetBerlinTime();
-            DateTime nextMidnight = now.Date.AddDays(1);
-            return nextMidnight - now;
-        }
-        // Berechnet die Zeit bis zum nächsten Montag um 12:00 Uhr (Berlin)
-        private static TimeSpan GetTimeToNextMondayNoon()
-        {
-            DateTime now = GetBerlinTime();
-            int daysUntilMonday = ((int)DayOfWeek.Monday - (int)now.DayOfWeek + 7) % 7;
-            DateTime nextMondayNoon = now.Date.AddDays(daysUntilMonday).AddHours(12);
-            if (daysUntilMonday == 0 && now.TimeOfDay >= TimeSpan.FromHours(12))
+            _currentWeek++;
+
+            Console.WriteLine($"[Scheduler] Sending weekly messages for Week {_currentWeek}...");
+
+            _messageIds.Clear();
+
+            // Generate all fixture messages
+            string allMessages = await HelperFactory.MakeFixtureMessage(_currentWeek);
+            var messages = allMessages.Split('ㅤ', StringSplitOptions.RemoveEmptyEntries);
+            var guild = CommandHandler._client.Guilds.FirstOrDefault(x => x.Id == _guildId);
+            if (guild == null)
             {
-                nextMondayNoon = nextMondayNoon.AddDays(7); // Falls heute Montag ist und die Zeit schon nach 12:00 Uhr
-            }
-            return nextMondayNoon - now;
-        }
-
-        // Hier wird der täglich auszuführende Code implementiert
-        private static void ExecuteDailyTask()
-        {
-            try
-            {
-                Console.WriteLine($"{GetBerlinTime():HH:mm:ss} Executing Daily Schedule.");
-                RefreshFranchises();
-                SendFixtureMessage(true);
-                Console.WriteLine($"{GetBerlinTime():HH:mm:ss} Executed Daily Schedule!.");
-
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-
-        }
-
-        // Die wöchentliche Aufgabe
-        private static void ExecuteWeeklyTask()
-        {
-            try
-            {
-                Console.WriteLine($"{GetBerlinTime():HH:mm:ss} - Executing Weekly Schedule.");
-                SendFixtureMessage();
-                RefreshFranchiseStanding();
-                Console.WriteLine($"{GetBerlinTime():HH:mm:ss} - Executed Weekly Schedule!.");
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
-
-        public static void RefreshFranchises()
-        {
-            var data = SheetHandler.manager.ReadSpreadsheet(SheetHandler.ERS_SHEET_URL, "Rosters!A2:AI128").Result;
-            List<Franchise> franchises = new List<Franchise>();
-
-            int rowIndex = 4;
-            int coloumn_gap = 9;
-            while (rowIndex < 107)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    Franchise franchise = new Franchise();
-                    franchise.name = data.GetValue(coloumn_gap * i + 2, rowIndex);
-                    franchise.subteams = new List<Subteam>();
-                    franchise.rank = data.GetValue(coloumn_gap * i + 2, rowIndex + 1).Split("Rank ").Last();
-                    franchise.manager = data.GetValue(coloumn_gap * i + 7, rowIndex - 1);
-                    franchise.assistentManagers = new List<string>();
-
-                    for (int j = 0; j < 2; j++)
-                    {
-                        string assistentManager = data.GetValue(coloumn_gap * i + 7, rowIndex + j);
-                        if (assistentManager != "")
-                        {
-                            franchise.assistentManagers.Add(assistentManager);
-                        }
-                    }
-                    // Subteams
-                    for (int j = 0; j < 5; j++)
-                    {
-                        Subteam subteam = new Subteam();
-                        subteam.name = data.GetValue(coloumn_gap * i + 2, rowIndex + 5 + j * 4);
-                        List<string> players = new List<string>();
-                        // Add the players
-                        for (int k = 0; k < 4; k++)
-                        {
-                            string player = data.GetValue(coloumn_gap * i + 7, rowIndex + j * 4 + 2 + k);
-                            if (player != "")
-                            {
-                                players.Add(player);
-                            }
-                            if (data.GetValue(coloumn_gap * i + 5, rowIndex + j * 4 + 2 + k) == "C")
-                            {
-                                subteam.captain = player;
-                            }
-                        }
-                        subteam.players = players;
-                        franchise.subteams.Add(subteam);
-                    }
-                    franchises.Add(franchise);
-                }
-                rowIndex += 25;
-            }
-            // Update the abbreviations
-            var franchiseAbrrData = SheetHandler.manager.ReadSpreadsheet(SheetHandler.ERS_SHEET_URL, "Import!A2:I121").Result;
-            for (int i = 0; i < franchiseAbrrData.Rows.Count; i++)
-            {
-                string currentFranchiseName = franchiseAbrrData.GetValue(2, i * 6);
-                var franchise = franchises.FirstOrDefault(f => f.name == currentFranchiseName);
-                if (franchise != null)
-                {
-                    franchise.abbreviation = franchiseAbrrData.GetValue(5, i * 6);
-                    franchise.logo_url = franchiseAbrrData.GetValue(6, i * 6);
-                    franchise.bannerurl = franchiseAbrrData.GetValue(7, i * 6);
-                    franchise.emoteUrl = HelperFactory.MakeDiscordEmoteString(franchise.abbreviation, 1093943074746531910);
-                    franchise.main_color = franchiseAbrrData.GetValue(8, i * 6).Remove(0, 1);
-                }
-            }
-
-            HelperFactory.Franchises = franchises;
-            SaveData current_Data = Newtonsoft.Json.JsonConvert.DeserializeObject<SaveData>(File.ReadAllText("./bot.json"));
-            current_Data.franchises = franchises;
-            string json = JsonConvert.SerializeObject(current_Data, Formatting.Indented);
-            File.WriteAllText("./bot.json", json);
-            Console.WriteLine("Franchises refreshed");
-        }
-
-        public static async void RefreshFranchiseStanding()
-        {
-            var currentRank = HelperFactory.Franchises.FirstOrDefault(x => x.name == franchiseName).rank;
-            int currentWeek = ISOWeek.GetWeekOfYear(GetBerlinTime()) - HelperFactory.seasonCalenderWeek;
-            if (currentWeek < 1)
-            {
-                Console.WriteLine("Date mismatch. Current week cannot be negative!");
+                Console.WriteLine("[Scheduler] Guild not found!");
                 return;
             }
-            try
-            {
-                var data = SheetHandler.manager.ReadSpreadsheet(SheetHandler.DXT_SHEET_URL, "WEEKSTANDING!B1:B10").Result;
-                data.SetValue(currentWeek - 1, 0, $"{currentRank}");
-                await SheetHandler.manager.WriteSpreadsheet(SheetHandler.DXT_SHEET_URL, "WEEKSTANDING!B1:B10", data);
-                Console.WriteLine("Franchise standing refreshed");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
 
-        public static async void SendFixtureMessage(bool edit=false)
-        {
-            var embed = await Fixtures();
-            if (embed != null)
+            // Create base embed builder
+            var embedBuilder = new Discord.EmbedBuilder()
+                .WithColor(HelperFactory.dxtColor)
+                .WithTitle($"Fixtures for Week {_currentWeek}");
+
+            int index = 0;
+            foreach (ulong channelId in _channelIds)
             {
-                var channel = CommandHandler._client.GetChannel(fixturesChannelId) as IMessageChannel;
-                if (edit)
+                var channel = guild.Channels.FirstOrDefault(x => x.Id == channelId);
+                if (channel is Discord.ITextChannel textChannel)
                 {
-                    var messages = await channel.GetMessagesAsync(1).FlattenAsync();
-                    var message = messages.FirstOrDefault();
-                    if(message.Author.Id == CommandHandler._client.CurrentUser.Id)
-                        await (message as IUserMessage).ModifyAsync(x => x.Embed = embed);
-                    else Console.WriteLine("Message is not from the bot");
-                }
+                    Discord.Embed embedToSend;
 
+                    if (index == 0)
+                    {
+                        // First channel gets the full message as description
+                        embedToSend = embedBuilder.WithDescription(allMessages).Build();
+                    }
+                    else
+                    {
+                        // Other channels get only the corresponding single message
+                        string singleMessage = index - 1 < messages.Length ? messages[index - 1] : "No data available";
+                        embedToSend = embedBuilder.WithDescription(singleMessage).Build();
+                    }
+
+                    // Send the message to Discord
+                    var sentMessage = await textChannel.SendMessageAsync(embed: embedToSend);
+
+                    // Store the messageId for later updates
+                    _messageIds[channelId] = sentMessage.Id;
+
+                    Console.WriteLine($"[Scheduler] Sent message to channel {channelId}, messageId={sentMessage.Id}");
+                }
                 else
                 {
-                    await channel.SendMessageAsync(embed: embed);
+                    Console.WriteLine($"[Scheduler] Channel {channelId} not found or not a text channel.");
                 }
+                Thread.Sleep(50);
+                index++;
             }
         }
-        public static async Task<Discord.Embed> Fixtures()
-        {
-            try
-            {
-                string week = (ISOWeek.GetWeekOfYear(GetBerlinTime()) - HelperFactory.seasonCalenderWeek).ToString();
-                string franchise = DailyTaskScheduler.franchiseName;
 
-                List<string> teamnames = HelperFactory.Franchises.Where(x => x.name == franchise).First().subteams.Select(x => x.name).ToList();
-                var manager = SheetHandler.manager;
-                var data = await manager.ReadSpreadsheet(SheetHandler.ERS_SHEET_URL, "Fixtures!A2:L901");
-                string matches = "";
-                int count = 0;
-                for (int i = 0; i < data.Rows.Count; i++)
+        /// <summary>
+        /// Updates all tracked messages once per hour.
+        /// </summary>
+        /// <summary>
+        /// Updates all tracked messages once per hour.
+        /// The first channel gets the full fixture list,
+        /// all other channels get their respective single message.
+        /// </summary>
+        private async Task UpdateFixtureMessagesAsync()
+        {
+            Console.WriteLine("[Scheduler] Updating messages...");
+
+            if (_messageIds.Count == 0)
+            {
+                Console.WriteLine("[Scheduler] No messages to update.");
+                return;
+            }
+
+            // Generate all fixture messages again (latest data)
+            string allMessages = await HelperFactory.MakeFixtureMessage(_currentWeek);
+            var messages = allMessages.Split('ㅤ', StringSplitOptions.RemoveEmptyEntries);
+
+            var client = new ApiClient(HelperFactory.defaultAPIUrl);
+            var allMatches = await client.GetMatchesAsync();
+            var allFranchises = await client.GetAllFranchisesAsync();
+            var franchiseTeams = allFranchises.Where(x => x.Name == HelperFactory.defaultFranchise).FirstOrDefault();
+            if (franchiseTeams == null || allMatches == null)
+            {
+                Console.WriteLine("[Scheduler] API error: Did not find any franchises or matches.");
+                return;
+            }
+
+            // Filter matches to include only those belonging to the default franchise and within the next 2 hours (+/- 5 minutes)
+            var now = DateTime.UtcNow;
+            var timeWindowStart = now.AddMinutes(-5);
+            var timeWindowEnd = now.AddHours(2).AddMinutes(5);
+
+            var relevantMatches = allMatches.Where(match =>
+            {
+                // Check if the match belongs to the default franchise
+                var isDefaultFranchise = franchiseTeams.Teams.Any(team => team.Id == match.HomeTeamId || team.Id == match.AwayTeamId);
+
+                // Check if the match is within the time window
+                var matchTime = match.ScheduledDate;
+                var isWithinTimeWindow = matchTime >= timeWindowStart && matchTime <= timeWindowEnd;
+                return isDefaultFranchise && isWithinTimeWindow;
+            }).ToList();
+
+            if (!relevantMatches.Any())
+            {
+                Console.WriteLine("[Scheduler] No relevant matches found within the time window. There will not be a reminder.");
+                return;
+            }
+
+            var guild = CommandHandler._client.Guilds.FirstOrDefault(x => x.Id == _guildId);
+            if (guild == null)
+            {
+                Console.WriteLine("[Scheduler] Guild not found!");
+                return;
+            }
+
+            // Base embed
+            var embedBuilder = new Discord.EmbedBuilder()
+                .WithColor(HelperFactory.dxtColor)
+                .WithTitle($"Fixtures for Week {_currentWeek}");
+
+            int index = 0;
+            foreach (var kvp in _messageIds)
+            {
+                ulong channelId = kvp.Key;
+                ulong messageId = kvp.Value;
+
+                var channel = guild.Channels.FirstOrDefault(x => x.Id == channelId);
+                if (channel is Discord.ITextChannel textChannel)
                 {
-                    if (teamnames.Contains(data.GetValue(4, i)) || teamnames.Contains(data.GetValue(5, i)))
+                    try
                     {
-                        if (data.GetValue(2, i) == ("Week " + week))
+                        var message = await textChannel.GetMessageAsync(messageId) as Discord.IUserMessage;
+                        if (message == null)
                         {
-                            if (count % 2 == 0)
-                            {
-                                if (i != 0) matches += "\n";
-                                matches += HelperFactory.MakeDiscordEmoteString("RSC_" + data.GetValue(1, i), 1093943074746531910) + " **" + data.GetValue(1, i) + "**\n";
-                                count = 0;
-                            }
-                            if (data.GetValue(4, i) != "")
-                            {
-                                if (data.GetValue(9, i) != "0-0")
-                                {
-                                    matches += "> **"
-                                        + HelperFactory.MakeDiscordEmoteString(HelperFactory.Franchises.Where(x => x.subteams.Any(y => y.name == data.GetValue(4, i))).First().abbreviation, HelperFactory.emote_guild)
-                                        + " " + data.GetValue(4, i) + " " + data.GetValue(9, i) + " " + data.GetValue(5, i) + " "
-                                        + HelperFactory.MakeDiscordEmoteString(HelperFactory.Franchises.Where(x => x.subteams.Any(y => y.name == data.GetValue(5, i))).First().abbreviation, HelperFactory.emote_guild) + "** \n";
-                                }
-                                else
-                                {
-                                    matches += "> **" +
-                                        HelperFactory.MakeDiscordEmoteString(HelperFactory.Franchises.Where(x => x.subteams.Any(y => y.name == data.GetValue(4, i))).First().abbreviation, HelperFactory.emote_guild) +
-                                        " " + data.GetValue(4, i) + " vs. " + data.GetValue(5, i) + " " +
-                                        HelperFactory.MakeDiscordEmoteString(HelperFactory.Franchises.Where(x => x.subteams.Any(y => y.name == data.GetValue(5, i))).First().abbreviation, HelperFactory.emote_guild) + "** \n";
-                                }
-                            }
-                            if (data.GetValue(10, i) == "Match is pending schedule date")
-                            {
-                                matches = matches + "> Not scheduled\n";
-                            }
-                            else
-                            {
-                                DateTime result;
-                                if (DateTime.TryParseExact(data.GetValue(7, i) + " " + data.GetValue(8, i),
-                                                           "dd/MM/yyyy HH:mm",
-                                                           CultureInfo.InvariantCulture,
-                                                           DateTimeStyles.None,
-                                                           out result))
-                                {
-                                    // Hier wird angenommen, dass das Datum in Berliner Zeit vorliegt
-                                    TimeZoneInfo berlinZone;
-                                    try
-                                    {
-                                        berlinZone = TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time");
-                                    }
-                                    catch (TimeZoneNotFoundException)
-                                    {
-                                        berlinZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
-                                    }
-                                    DateTime resultBerlin = DateTime.SpecifyKind(result, DateTimeKind.Unspecified);
-                                    DateTime utcTime = TimeZoneInfo.ConvertTimeToUtc(resultBerlin, berlinZone);
-                                    DateTime epochStart = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-                                    long unixTime = (long)(utcTime - epochStart).TotalSeconds;
-                                    matches = matches + ">  <t:" + unixTime + ":f>" + " |  <t:" + unixTime + ":R> \n";
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Die Eingabe entspricht nicht dem angegebenen Format.");
-                                    matches = matches + ">" + data.GetValue(7, i) + "  " + data.GetValue(8, i) + "\n";
-                                }
-                            }
-                            if (data.GetValue(11, i) != "N/A")
-                            {
-                                matches += "> 🧷 [Link](" + data.GetValue(11, i) + ") \n";
-                            }
-                            count++;
+                            Console.WriteLine($"[Scheduler] Message {messageId} not found in channel {channelId}.");
+                            continue;
                         }
+
+                        Discord.Embed newEmbed;
+                        if (index == 0)
+                        {
+                            // First channel = full message
+                            newEmbed = embedBuilder.WithDescription(allMessages).Build();
+                        }
+                        else
+                        {
+                            // Other channels = single message
+                            string singleMessage = index - 1 < messages.Length ? messages[index - 1] : "No data available";
+                            newEmbed = embedBuilder.WithDescription(singleMessage).Build();
+                        }
+
+                        await message.ModifyAsync(msg => msg.Embed = newEmbed);
+                        Console.WriteLine($"[Scheduler] Updated message {messageId} in channel {channelId}");
+
+                        if (relevantMatches.Where(x => x.TierId == index + 35).Any())
+                        {
+                            var upcomingMatch = relevantMatches.FirstOrDefault(x => x.TierId == index + 35);
+                            if (upcomingMatch != null)
+                            {
+                                var opponentTeam = allFranchises
+                                    .SelectMany(f => f.Teams)
+                                    .FirstOrDefault(t => t.Id == (upcomingMatch.HomeTeamId == franchiseTeams.Teams.FirstOrDefault(ft => ft.Id == upcomingMatch.HomeTeamId)?.Id
+                                        ? upcomingMatch.AwayTeamId
+                                        : upcomingMatch.HomeTeamId))?.Name;
+
+                                await textChannel.SendMessageAsync(
+                                    $"**Reminder 📢:** *Upcoming match against **{opponentTeam}**. Date:* {HelperFactory.ToDiscordTimestamp(upcomingMatch.ScheduledDate)}");
+                            }
+                        }
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"[Scheduler] Failed to update message {messageId} in channel {channelId}: {ex.Message}");
                     }
                 }
-                var franchiseData = HelperFactory.Franchises.FirstOrDefault(x => x.name == franchise);
-                var emoteUrl = franchiseData.emoteUrl ?? "";
-                var bannerUrl = franchiseData.bannerurl ?? "";
-                var logoUrl = franchiseData.logo_url ?? "";
-                int hexValue = int.Parse(franchiseData.main_color, System.Globalization.NumberStyles.HexNumber);
 
-                Discord.Color color = new Discord.Color((uint)hexValue);
-                var emb = new EmbedBuilder()
-                .WithColor(color)
-                .WithTitle($"{emoteUrl} Fixtures of week " + week)
-                .WithDescription(matches)
-                .WithCurrentTimestamp()
-                .WithFooter(franchiseData.name, iconUrl: logoUrl)
-                .Build();
+                index++;
+            }
+        }
 
-                return emb;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-                return null;
-            }
+
+        /// <summary>
+        /// Dispose timers when shutting down the scheduler.
+        /// </summary>
+        public void Dispose()
+        {
+            _hourlyUpdateTimer?.Dispose();
+            _weeklyMessageTimer?.Dispose();
         }
     }
 }

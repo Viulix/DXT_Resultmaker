@@ -21,10 +21,7 @@ namespace DXT_Resultmaker
             string json = File.ReadAllText("./bot.json");
             SaveData item = Newtonsoft.Json.JsonConvert.DeserializeObject<SaveData>(json);
             AdminModule.admins = item.admins;
-            SheetHandler.ERS_SHEET_URL = item.database_sheet;
-            SheetHandler.DXT_SHEET_URL = item.dxt_sheet;
 
-            HelperFactory.Franchises = item.franchises;
 
 
             // Start with configuration and booting
@@ -47,7 +44,7 @@ namespace DXT_Resultmaker
             var _commandService = serviceProvider.GetRequiredService<InteractionService>();
             var _client = serviceProvider.GetRequiredService<DiscordSocketClient>();
 
-            SheetHandler.manager = new SheetManager("./key.json", scopes);
+            //SheetHandler.manager = new SheetManager("./key.json", scopes);
 
 
             // Commands
@@ -57,19 +54,12 @@ namespace DXT_Resultmaker
             await _client.LoginAsync(TokenType.Bot, item.token);
             await _client.StartAsync();
             await _client.SetGameAsync("with you!", null);
-
-
             await Task.Delay(-1);
         }
         private Task Log(LogMessage msg)
         {
             Console.WriteLine(msg.ToString());
             return Task.CompletedTask;
-        }
-        static DateTime GetNextWeekday(DateTime start, DayOfWeek day)
-        {
-            int daysToAdd = ((int)day - (int)start.DayOfWeek + 7) % 7;
-            return start.AddDays(daysToAdd);
         }
     }
 }

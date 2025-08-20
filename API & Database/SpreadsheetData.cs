@@ -75,31 +75,5 @@ namespace DXT_Resultmaker
             int rowIndex = row - 1;
             SetValue(rowIndex, colIndex, value);
         }
-
-        // Liefert die gesamte Zeile (Zeilennummer beginnend bei 1) als Liste von Strings.
-        public List<string> GetRow(int row)
-        {
-            int rowIndex = row - 1;
-            if (rowIndex < Rows.Count)
-                return new List<string>(Rows[rowIndex]);
-            return new List<string>();
-        }
-
-        // Liefert die gesamte Spalte (Spalte als Buchstabe) als Liste von Strings.
-        public List<string> GetColumn(string column)
-        {
-            int colIndex = ColumnLetterToIndex(column);
-            List<string> columnData = new List<string>();
-
-            foreach (var row in Rows)
-            {
-                if (colIndex < row.Count)
-                    columnData.Add(row[colIndex]);
-                else
-                    columnData.Add("");
-            }
-            return columnData;
-        }
     }
-
 }
