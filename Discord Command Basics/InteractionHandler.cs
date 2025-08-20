@@ -2,9 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
-using System;
 using System.Reflection;
-using System.Threading.Tasks;
 
 namespace DXT_Resultmaker;
 

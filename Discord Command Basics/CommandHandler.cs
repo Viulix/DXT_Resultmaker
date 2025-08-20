@@ -186,8 +186,17 @@ namespace DXT_Resultmaker
         {
             // await _interactions.RegisterCommandsToGuildAsync(1093943074746531910, true); # test guild
             await _interactions.RegisterCommandsToGuildAsync(690948036540760147, true);
-            DailyTaskScheduler.InitializeDailyTask();
-            DailyTaskScheduler.InitializeWeeklyTask();
+            
+            DailyTaskScheduler dailyTaskScheduler = new(new List<ulong> { 
+                1407462352227663882, // DXT Fixtures Channel
+                1407462205640802364, // Master Fixtures Channel
+                1407462223181512714, // Elite Fixtures Channel
+                1407462239325130912, // Rival Fixtures Channel
+                1407462280232173588, // Challenger Fixtures Channel
+                1407462302122246277, // Prospect Fixtures Channel
+                1407462324633079828  // Academy Fixtures Channel
+            });
+            await dailyTaskScheduler.Start(); // Start the daily task scheduler to handle weekly messages and hourly updates
         }
     }
 }
