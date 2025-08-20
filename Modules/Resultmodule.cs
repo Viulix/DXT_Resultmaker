@@ -1,11 +1,5 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Google.Apis.Auth.OAuth2;
-using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Globalization;
-using System.Threading.Tasks;
-
 
 namespace DXT_Resultmaker.Modules;
 

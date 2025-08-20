@@ -34,7 +34,7 @@ namespace DXT_Resultmaker
             // Services
             var services = new ServiceCollection()
                 .AddSingleton<DiscordSocketClient>(new DiscordSocketClient(config))
-                .AddSingleton<InteractionService>()
+                .AddSingleton<InteractionService>(provider => new InteractionService(provider.GetRequiredService<DiscordSocketClient>()))
                 .AddSingleton<CommandHandler>();
 
             var serviceProvider = services.BuildServiceProvider();
