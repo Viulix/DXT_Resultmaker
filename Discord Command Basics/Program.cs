@@ -1,8 +1,5 @@
-﻿using BallchasingSharp;
-using Discord;
-using Discord.Commands;
+﻿using Discord;
 using Discord.Interactions;
-using Discord.Net;
 using Discord.WebSocket;
 using DXT_Resultmaker.Modules;
 using Microsoft.Extensions.DependencyInjection;
