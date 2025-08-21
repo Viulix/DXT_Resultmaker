@@ -1,20 +1,152 @@
 ﻿using Discord;
 using System.Globalization;
-using System.Linq;
 
 namespace DXT_Resultmaker
 {
     public static class HelperFactory
     {
-        public static string[] tiers = { "Master", "Elite", "Rival", "Challenger", "Prospect", "Academy" };
-        public static ulong emote_guild = 1093943074746531910;
-        public const string defaultFranchise = "Dexterity";
-        public const string defaultAPIUrl = "https://api.rsc-community.com/v2";
-        public static Discord.Color dxtColor = new(0x9ee345);
-        public static string userDataPath = "./userData.json";
-        public static DateTime seasonStart = new(2025, 8, 18);
-        public static int seasonCalenderWeek = 33;
-        public static List<Franchise> Franchises = new();
+        // Konstante Defaults
+        public static readonly Dictionary<string, int> Tiers = new Dictionary<string, int>
+        {
+            { "Master", 36 },
+            { "Elite", 37 },
+            { "Rival", 38 },
+            { "Challenger", 39 },
+            { "Prospect", 40 },
+            { "Academy", 41 }
+        };
+        internal static Dictionary<int, uint> TierColors = new()
+        {
+                { 36, 7262719 }, // Master
+                { 37, 0x2ccc6f }, // Elite
+                { 38, 0xf1c40d }, // Rival
+                { 39, 0xe67c20 }, // Challenger
+                { 40, 0xe06564 }, // Prospect
+                { 41, 0xb270bb }  // Academy
+            };
+        internal static List<string> Franchises = [];
+        public static readonly DateTime SeasonStart = new(2025, 8, 18);
+
+        // Constants
+        public const string DefaultAPIUrl = "https://api.rsc-community.com/v2";
+        public const string DefaultFranchiseConst = "Dexterity";
+        public const int SeasonCalenderWeek = 33;
+
+        // Path
+        public static readonly string SaveDataPath = "./savedata.json";
+
+        public static SaveData SaveData { get; private set; } = new();
+        public static void LoadSaveData()
+        {
+            if (!File.Exists(SaveDataPath))
+            {
+                // Datei anlegen mit Defaults
+                SaveData = new SaveData();
+                Save();
+            }
+            else
+            {
+                string json = File.ReadAllText(SaveDataPath);
+                SaveData? data = Newtonsoft.Json.JsonConvert.DeserializeObject<SaveData>(json);
+
+                SaveData = data ?? new SaveData();
+            }
+        }
+        public static void Save()
+        {
+            string json = Newtonsoft.Json.JsonConvert.SerializeObject(SaveData, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(SaveDataPath, json);
+        }
+
+        public static void AddAdmin(ulong userId)
+        {
+            if (!SaveData.Admins.Contains(userId))
+                SaveData.Admins.Add(userId);
+            Save();
+        }
+
+        public static void RemoveAdmin(ulong userId)
+        {
+            if (SaveData.Admins.Contains(userId))
+                SaveData.Admins.Remove(userId);
+            Save();
+        }
+
+        public static void ReplaceRole(int tierIndex, ulong roleId)
+        {
+            while (SaveData.RoleIds.Count <= tierIndex)
+                SaveData.RoleIds.Add(0); 
+
+            SaveData.RoleIds[tierIndex] = roleId;
+            Save();
+        }
+
+        public static ulong? GetRole(int tierIndex)
+        {
+            if (tierIndex < 0 || tierIndex >= SaveData.RoleIds.Count)
+                return null;
+
+            return SaveData.RoleIds[tierIndex];
+        }
+
+        public static void RemoveRole(ulong roleId)
+        {
+            if (SaveData.RoleIds.Contains(roleId))
+                SaveData.RoleIds.Remove(roleId);
+            Save();
+        }
+
+        public static void SetDefaultFranchise(string franchise)
+        {
+            SaveData.DefaultFranchise = franchise;
+            Save();
+        }
+
+        public static void SetFranchises(List<Franchise> franchises)
+        {
+            SaveData.Franchises = franchises;
+            Save();
+        }
+
+        public static void SetDefaultAPIUrl(string url)
+        {
+            SaveData.DefaultAPIUrl = url;
+            Save();
+        }
+
+        public static void SetEmoteGuild(ulong emoteGuild)
+        {
+            SaveData.EmoteGuild = emoteGuild;
+            Save();
+        }
+
+        public static void SetSeasonStart(DateTime start)
+        {
+            SaveData.SeasonStart = start;
+            Save();
+        }
+
+        public static void SetSeasonCalenderWeek(int week)
+        {
+            SaveData.SeasonCalenderWeek = week;
+            Save();
+        }
+
+        public static void SetMainColor(Discord.Color color)
+        {
+            SaveData.MainColor = color;
+            Save();
+        }
+
+        public static void SetTierColor(int tierIndex, Discord.Color color)
+        {
+            if (SaveData.TierColors.ContainsKey(tierIndex))
+                SaveData.TierColors[tierIndex] = color;
+            else
+                SaveData.TierColors.Add(tierIndex, color);
+            Save();
+        }
+
         public static string MakeDiscordEmoteString(string abbrevation, ulong guildId, bool tierIcon = false)
         {
             try
@@ -80,43 +212,20 @@ namespace DXT_Resultmaker
         }
         public static Discord.Color GetTierColor(int tier)
         {
-            Discord.Color color = new Discord.Color(000000);
-
-            switch ((Tiers)tier)
-            {
-                case Tiers.Master:
-                    color = new Discord.Color(0x6ed1ff);
-                    break;
-                case Tiers.Elite:
-                    color = new Discord.Color(0x2ccc6f);
-                    break;
-                case Tiers.Rival:
-                    color = new Discord.Color(0xf1c40d);
-                    break;
-                case Tiers.Challenger:
-                    color = new Discord.Color(0xe67c20);
-                    break;
-                case Tiers.Prospect:
-                    color = new Discord.Color(0xe06564);
-                    break;
-                case Tiers.Academy:
-                    color = new Discord.Color(0xb270bb);
-                    break;
-            }
-            return color;
+            return TierColors.TryGetValue(tier, out var color) ? new Discord.Color(color) : new Discord.Color(0x000000);
         }
         public static Discord.EmbedBuilder DefaultEmbed(Discord.IUser author)
         {
             var embed = new EmbedBuilder() { }
                 .WithCurrentTimestamp()
-                .WithColor(dxtColor);
+                .WithColor(SaveData.MainColor);
             return embed;
                 
         }
         public static string ToDiscordTimestamp(DateTime? date, string format = "f", string fallback = "*Not Scheduled*")
         {
             if (date == null)
-                return $"> {fallback}\n";
+                return $"{fallback}\n";
 
             // Zeitzone Berlin (beachtet Sommer-/Winterzeit automatisch)
             var berlinTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
@@ -126,11 +235,11 @@ namespace DXT_Resultmaker
 
             return $"<t:{unixSeconds}:{format}>\n";
         }
-        public static async Task<string> MakeFixtureMessage(int week, string franchise = defaultFranchise)
+        public static async Task<string> MakeFixtureMessage(int week, string franchise = DefaultFranchiseConst)
         {
             if (week == -1)
             {
-                week = (ISOWeek.GetWeekOfYear(TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time"))) - HelperFactory.seasonCalenderWeek);
+                week = (ISOWeek.GetWeekOfYear(TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time"))) - HelperFactory.SeasonCalenderWeek);
 
                 if (week > 9)
                 {
@@ -138,7 +247,7 @@ namespace DXT_Resultmaker
                 }
             }
             // Make API call to get the matches and the franchise
-            var client = new ApiClient(HelperFactory.defaultAPIUrl);
+            var client = new ApiClient(DefaultAPIUrl);
             var matchesData = await client.GetMatchesAsync();
             var allFranchiseData = await client.GetAllFranchisesAsync();
             var franchiseData = allFranchiseData.Where(x => x.Name == franchise).FirstOrDefault();
@@ -153,7 +262,7 @@ namespace DXT_Resultmaker
                 var teamMatches = matchesData.Where(x => x.Week == week && x.Format == "League Play" && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id)).ToList();
                 if (teamMatches.Count > 0)
                 {
-                    tierMatches += $"{HelperFactory.MakeDiscordEmoteString(HelperFactory.tiers[teamTier.TierId - 36], HelperFactory.emote_guild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
+                    tierMatches += $"{MakeDiscordEmoteString(Tiers.Where(x =>x.Value == teamTier.TierId).FirstOrDefault().Key, SaveData.EmoteGuild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
                     foreach (var match in teamMatches)
                     {
                         if (match is null || match.Format != "League Play") continue;
@@ -163,9 +272,9 @@ namespace DXT_Resultmaker
                         {
                             continue; // Skip if teams are not found
                         }
-                        string currentMatchDate = "> " + HelperFactory.ToDiscordTimestamp(match.ScheduledDate);
-                        var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.emote_guild);
-                        var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.emote_guild);
+                        string currentMatchDate = "> " + ToDiscordTimestamp(match.ScheduledDate);
+                        var discordEmoteStringHome = MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, SaveData.EmoteGuild);
+                        var discordEmoteStringAway = MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, SaveData.EmoteGuild);
                         tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n {currentMatchDate}";
                     }
                     allTierMatches += tierMatches + "ㅤ\n";
@@ -173,7 +282,5 @@ namespace DXT_Resultmaker
             }
             return allTierMatches;
         }
-
-
     }
 }

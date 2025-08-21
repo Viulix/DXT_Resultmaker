@@ -3,7 +3,6 @@ using Discord.Interactions;
 
 namespace DXT_Resultmaker.Modules;
 
-// Interaction modules must be public and inherit from an IInteractionModuleBase
 public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
 {
 
@@ -16,15 +15,15 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
     }
     
     [SlashCommand("roster", "Displays current roster of the franchise and tier you asked for.")]
-    public async Task Roster([Choice("Master", (int)Tiers.Master), Choice("Elite", (int)Tiers.Elite), Choice("Rival", (int)Tiers.Rival),
-            Choice("Challenger", (int)Tiers.Challenger), Choice("Prospect", (int)Tiers.Prospect), Choice("Academy", (int)Tiers.Academy)] int tier, [Autocomplete(typeof(AutoCompleteHandlerBase))] string franchiseName = HelperFactory.defaultFranchise)
+    public async Task Roster([Choice("Master", (int)TierId.Master), Choice("Elite", (int)TierId.Elite), Choice("Rival", (int)TierId.Rival),
+            Choice("Challenger", (int)TierId.Challenger), Choice("Prospect", (int)TierId.Prospect), Choice("Academy", (int)TierId.Academy)] int tier, [Autocomplete(typeof(AutoCompleteHandlerBase))] string franchiseName = HelperFactory.DefaultFranchiseConst)
     {
         await DeferAsync();
         try
         {
-            var client = new ApiClient(HelperFactory.defaultAPIUrl);
+            var client = new ApiClient(HelperFactory.DefaultAPIUrl);
             FranchiseTeam franchiseTeam = await client.GetFranchiseTeamAsync(franchiseName, tier);
-            FranchiseData franchise = await client.GetFranchiseByNameAsync(franchiseName);
+            Franchise franchise = await client.GetFranchiseByNameAsync(franchiseName);
             if (franchiseTeam is null || franchise is null)
             {
                 await FollowupAsync("Did not find a team for this franchise.");
@@ -38,9 +37,13 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
             {
                 if (player.Captain == true)
                 {
-                    field1 += "C\n";
+                    field1 += "`C`\n";
                 }
-                field2 += $"`{player.User.Name}`\n";
+                else
+                {
+                    field1 += "ㅤ\n";
+                }
+                    field2 += $"`{player.User.Name}`\n";
                 if(player.Cmv is not null) field3 += $"`{player.Cmv}`\n";
                 else field3 += $"`N/V`\n";
             }
@@ -51,7 +54,7 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
 
             var emb = new EmbedBuilder()
                 .WithColor(HelperFactory.GetTierColor(tier))
-                .WithTitle(HelperFactory.MakeDiscordEmoteString(HelperFactory.tiers[tier - 36], HelperFactory.emote_guild, true) + " " + franchiseName + $" - \"{titel}\"\n")
+                .WithTitle(HelperFactory.MakeDiscordEmoteString(HelperFactory.Tiers.Where(x => x.Value == tier).FirstOrDefault().Key, HelperFactory.SaveData.EmoteGuild, true) + " " + franchiseName + $" - \"{titel}\"\n")
                 .WithDescription("*Team Overview*");
             if(field1 != "")
             {

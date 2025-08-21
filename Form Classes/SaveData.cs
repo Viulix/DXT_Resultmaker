@@ -2,30 +2,17 @@
 {
     public class SaveData
     {
-        public string token { get; set; }
-        public List<ulong> admins { get; set; }
-        public string database_sheet { get; set; }
-        public string dxt_sheet { get; set; }
-        public List<Franchise> franchises { get; set; }
-    }
-    public class Franchise
-    {
-        public string name { get; set; }
-        public List<Subteam> subteams { get; set; }
-        public string manager { get; set; }
-        public List<string> assistentManagers { get; set; }
-        public string rank { get; set; }
-        public string abbreviation { get; set; }
-        public string logo_url { get; set; }
-        public string bannerurl{ get; set; }
-        public string emoteUrl { get; set; }
-        public string main_color { get; set; }
-
-    }
-    public class Subteam
-    {
-        public string name { get; set; }
-        public List<string> players { get; set; }
-        public string captain { get; set; }
+        public List<ulong> Admins { get; set; } = new();
+        public List<Franchise> Franchises { get; set; } = new();
+        public List<ulong> ChannelIds { get; set; } = new();
+        public List<ulong> GuildIds { get; set; } = new();
+        public List<ulong> RoleIds { get; set; } = new();
+        public ulong EmoteGuild { get; set; } = new();
+        public string DefaultFranchise { get; set; } = "";
+        public string DefaultAPIUrl { get; set; } = "";
+        public int SeasonCalenderWeek { get; set; } = 33;
+        public DateTime SeasonStart { get; set; } = DateTime.Now;
+        public uint MainColor { get; set; } = new Discord.Color(0x000000);
+        public static Dictionary<int, uint> TierColors { get; set; } = HelperFactory.TierColors;
     }
 }

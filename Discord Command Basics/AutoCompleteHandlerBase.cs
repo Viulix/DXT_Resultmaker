@@ -15,8 +15,8 @@ namespace DXT_Resultmaker
 
                 if (string.IsNullOrEmpty(value))
                     return Task.FromResult(AutocompletionResult.FromSuccess());
-                var matches = HelperFactory.Franchises.Where(x => x.name.StartsWith(value, StringComparison.OrdinalIgnoreCase));
-                return Task.FromResult(AutocompletionResult.FromSuccess(matches.Select(x => new AutocompleteResult(x.name, x.name))));
+                var matches = HelperFactory.Franchises;
+                return Task.FromResult(AutocompletionResult.FromSuccess(matches.Select(x => new AutocompleteResult(x, x))));
             }
             catch (Exception ex)
             {

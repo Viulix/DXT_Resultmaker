@@ -184,19 +184,18 @@ namespace DXT_Resultmaker
         }
         private async Task Refresh()
         {
-            // await _interactions.RegisterCommandsToGuildAsync(1093943074746531910, true); # test guild
-            await _interactions.RegisterCommandsToGuildAsync(690948036540760147, true);
-            
-            DailyTaskScheduler dailyTaskScheduler = new(new List<ulong> { 
-                1407462352227663882, // DXT Fixtures Channel
-                1407462205640802364, // Master Fixtures Channel
-                1407462223181512714, // Elite Fixtures Channel
-                1407462239325130912, // Rival Fixtures Channel
-                1407462280232173588, // Challenger Fixtures Channel
-                1407462302122246277, // Prospect Fixtures Channel
-                1407462324633079828  // Academy Fixtures Channel
-            });
-            await dailyTaskScheduler.Start(); // Start the daily task scheduler to handle weekly messages and hourly updates
+            foreach(var guildId in HelperFactory.SaveData.GuildIds)
+            {
+                try
+                {
+                    await _interactions.RegisterCommandsToGuildAsync(guildId, true);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to register commands for guild {guildId}: {ex.Message}");
+                }
+            }
+            Console.WriteLine("Commands registered successfully.");
         }
     }
 }
