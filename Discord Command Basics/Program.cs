@@ -13,16 +13,23 @@ namespace DXT_Resultmaker
     {
         static void Main(string[] args)
             => new Program().MainAsync().GetAwaiter().GetResult();
-
+        public static DailyTaskScheduler DailyTaskScheduler { get; private set; } = new DailyTaskScheduler();
 
         public async Task MainAsync()
         {
             // Read Save Data
-            string json = File.ReadAllText("./bot.json");
-            SaveData item = Newtonsoft.Json.JsonConvert.DeserializeObject<SaveData>(json);
-            AdminModule.admins = item.admins;
+            string token = File.ReadAllText("./token.txt");
 
-
+            // Load the save data in HelperFactory
+            HelperFactory.LoadSaveData();
+            var franchiseNames = HelperFactory.SaveData.Franchises.Select(x => x.Name).ToList();
+            if (franchiseNames.Count > 0)
+            {
+                HelperFactory.Franchises = franchiseNames;
+            }
+            // Set the static properties outside helper factory
+            AdminModule.Admins = HelperFactory.SaveData.Admins;
+            AdminModule.TierDiscordRoleId = HelperFactory.SaveData.RoleIds;
 
             // Start with configuration and booting
             var config = new DiscordSocketConfig()
@@ -48,7 +55,7 @@ namespace DXT_Resultmaker
             var commands = serviceProvider.GetRequiredService<InteractionService>();
             await serviceProvider.GetRequiredService<CommandHandler>().InitializeAsync();
             _client.Log += Log;
-            await _client.LoginAsync(TokenType.Bot, item.token);
+            await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
             await _client.SetGameAsync("with you!", null);
             await Task.Delay(-1);

@@ -1,81 +1,279 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Newtonsoft.Json;
 using System.Globalization;
 namespace DXT_Resultmaker.Modules
 {
     public class AdminModule : InteractionModuleBase<SocketInteractionContext>
     {
-        public static List<ulong> admins;
-        private static List<ulong> TierDiscordRoleId = new() // These are the IDs of the roles that are used to determine the tier of a user.
-        {
-            796892694261399613,
-            1200155287533932656,
-            796892696408358962,
-            796892697570050059,
-            796895790433697793,
-            1395460550690996365
-        };
+        // Ändere die Sichtbarkeit der statischen Felder von public zu internal, um CA2211 zu beheben.
+        internal static List<ulong> Admins = [];
+        internal static List<ulong> TierDiscordRoleId = [];
+        
+        private const ulong CreatorId = 300570127869411329; // nur der Bot-Creator darf Admins verwalten
 
+        // Hilfsfunktion: Admin-Check
+        public static bool IsAdmin(ulong userId)
+        {
+            return HelperFactory.SaveData.Admins.Contains(userId);
+        }
 
         [SlashCommand("makeadmin", "Only for creator of the bot.")]
         public async Task MakeAdmin(IUser user)
         {
-            if (Context.User.Id == 300570127869411329)
-            {
-                Console.WriteLine(admins.Count);
-                var current_admins = admins;
-                SaveData current_Data = JsonConvert.DeserializeObject<SaveData>(File.ReadAllText("./bot.json"));
-
-                if (current_admins.Contains(user.Id))
-                {
-                    await RespondAsync("This user is already an admin.", ephemeral: true);
-                    return;
-                }
-                var newAdmins = current_admins.Append(user.Id);
-                current_Data.admins = newAdmins.ToList();
-                admins = newAdmins.ToList();
-                string json = JsonConvert.SerializeObject(current_Data, Formatting.Indented);
-
-                File.WriteAllText("./bot.json", json);
-                await RespondAsync("Worked.", ephemeral: true);
-            }
-            else
+            if (Context.User.Id != CreatorId)
             {
                 await RespondAsync("You are not goat enough to pull this.", ephemeral: true);
+                return;
             }
+
+            if (IsAdmin(user.Id))
+            {
+                await RespondAsync("This user is already an admin.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.AddAdmin(user.Id);
+            await RespondAsync($"User {user.Username} is now an admin ✅", ephemeral: true);
         }
+
         [SlashCommand("removeadmin", "Only for the creator of the bot.")]
         public async Task RemoveAdmin(IUser user)
         {
-            if (Context.User.Id == 300570127869411329)
-            {
-                var current_admins = admins;
-                SaveData current_Data = JsonConvert.DeserializeObject<SaveData>(File.ReadAllText("./bot.json"));
-                if (!current_admins.Contains(user.Id))
-                {
-                    await RespondAsync("No user with that ID found.", ephemeral: true);
-                    return;
-                }
-
-                var newAdmins = current_admins.Where(x => x != user.Id);
-                Console.WriteLine(current_admins.Count);
-                current_Data.admins = newAdmins.ToList();
-                admins = newAdmins.ToList();
-                string json = JsonConvert.SerializeObject(current_Data, Formatting.Indented);
-
-                File.WriteAllText("./bot.json", json);
-                await RespondAsync("Worked.", ephemeral: true);
-            }
-            else
+            if (Context.User.Id != CreatorId)
             {
                 await RespondAsync("You are not goat enough to pull this.", ephemeral: true);
+                return;
             }
+
+            if (!IsAdmin(user.Id))
+            {
+                await RespondAsync("No user with that ID found.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.RemoveAdmin(user.Id);
+            await RespondAsync($"User {user.Username} was removed from admins ❌", ephemeral: true);
         }
-        public static bool IsAdmin(ulong userid)
+
+        [SlashCommand("set_role", "Set a Discord role for a specific tier.")]
+        public async Task SetRole(IRole role, [Choice("Master", (int)TierId.Master), Choice("Elite", (int)TierId.Elite), Choice("Rival", (int)TierId.Rival),
+            Choice("Challenger", (int)TierId.Challenger), Choice("Prospect", (int)TierId.Prospect), Choice("Academy", (int)TierId.Academy)]
+            int tier)
         {
-            if (admins.Contains(userid)) return true;
-            else return false;
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            int tierIndex = tier - 36; // Convert TierId to index (Master = 0, Elite = 1, etc.)
+            HelperFactory.ReplaceRole(tierIndex, role.Id);
+            await RespondAsync($"Role for tier {tierIndex} set to {role.Mention} ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set_franchises", "Set the default franchise.")]
+        public async Task SetFranchises()
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            ApiClient apiClient = new(HelperFactory.SaveData.DefaultAPIUrl);
+            var allFranchises = await apiClient.GetAllFranchisesAsync();
+            HelperFactory.SetFranchises(allFranchises);
+            await RespondAsync($"Refreshed all franchise names ✅", ephemeral: true);
+        }
+        [SlashCommand("set_default_franchise", "Set the default franchise.")]
+        public async Task SetDefaultFranchise(string franchise)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(franchise))
+            {
+                await RespondAsync("Franchise name cannot be empty.", ephemeral: true);
+                return;
+            }
+            HelperFactory.SetDefaultFranchise(franchise);
+            await RespondAsync($"Default franchise set to **{franchise}** ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set_apiurl", "Set the default API url.")]
+        public async Task SetApiUrl(string url)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.SetDefaultAPIUrl(url);
+            await RespondAsync($"API URL set to {url} ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set_emoteguild", "Set the emote guild ID.")]
+        public async Task SetEmoteGuild(ulong guildId)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.SetEmoteGuild(guildId);
+            await RespondAsync($"Emote guild set to `{guildId}` ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set_seasonstart", "Set the season start date.")]
+        public async Task SetSeasonStart(DateTime startDate)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.SetSeasonStart(startDate);
+            await RespondAsync($"Season start set to {startDate:yyyy-MM-dd} ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set_seasonweek", "Set the season calendar week.")]
+        public async Task SetSeasonWeek(int week)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.SetSeasonCalenderWeek(week);
+            await RespondAsync($"Season calendar week set to {week} ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set_color", "Set the main color.")]
+        public async Task SetColor(string hexValue)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            // '#' am Anfang optional entfernen
+            hexValue = hexValue.TrimStart('#');
+
+            if (!uint.TryParse(hexValue, System.Globalization.NumberStyles.HexNumber, null, out var hex))
+            {
+                await RespondAsync("Invalid hex value. Please use format like `#9EE345`.", ephemeral: true);
+                return;
+            }
+
+            var color = new Discord.Color(hex);
+            HelperFactory.SetMainColor(color);
+
+            await RespondAsync($"Main color set to `#{hexValue.ToUpper()}` ✅", ephemeral: true);
+        }
+        [SlashCommand("set_schedule_week", "Set the current week counter manually.")]
+        public async Task SetScheduleWeek(int week)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            Program.DailyTaskScheduler.SetCurrentWeek(week);
+            await RespondAsync($"Current week manually set to {week} ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set_tiercolor", "Set the color for a specific tier.")]
+        public async Task SetTierColor([Choice("Master", (int)TierId.Master), Choice("Elite", (int)TierId.Elite), Choice("Rival", (int)TierId.Rival),
+            Choice("Challenger", (int)TierId.Challenger), Choice("Prospect", (int)TierId.Prospect), Choice("Academy", (int)TierId.Academy)]
+            int tier, uint hexValue)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            int tierIndex = tier - 36;
+            var color = new Discord.Color(hexValue);
+            HelperFactory.SetTierColor(tierIndex, color);
+            await RespondAsync($"Tier {tierIndex} color set to `#{hexValue:X}` ✅", ephemeral: true);
+        }
+        [SlashCommand("set-weekly-time", "Set the weekly message time (day + HH:mm)")]
+        public async Task SetWeeklyTime(DayOfWeek day, string time)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            if (!TimeSpan.TryParse(time, out var parsedTime))
+            {
+                await RespondAsync("Invalid time format. Use HH:mm (e.g. 14:00).", ephemeral: true);
+                return;
+            }
+
+            Program.DailyTaskScheduler.SetWeeklyTime(day, parsedTime);
+            await RespondAsync($"Weekly messages set to **{day} {time}** ✅", ephemeral: true);
+        }
+
+        [SlashCommand("set-update-interval", "Set the update interval in minutes")]
+        public async Task SetUpdateInterval(int minutes)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            if (minutes < 1)
+            {
+                await RespondAsync("Interval must be >= 1 minute.", ephemeral: true);
+                return;
+            }
+
+            Program.DailyTaskScheduler.SetUpdateInterval(TimeSpan.FromMinutes(minutes));
+            await RespondAsync($"Update interval set to **{minutes} minutes** ✅", ephemeral: true);
+        }
+
+        [SlashCommand("run-weekly", "Manually run the weekly task")]
+        public async Task RunWeekly()
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            await DeferAsync();
+            try
+            {
+                await Program.DailyTaskScheduler.RunWeeklyNow();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error running weekly task: {ex.Message}");
+                await FollowupAsync("An error occurred while executing the weekly task.", ephemeral: true);
+                return;
+            }
+            await FollowupAsync("Weekly task executed manually ✅", ephemeral: true);
+        }
+
+        [SlashCommand("run-update", "Manually run the update task")]
+        public async Task RunUpdate()
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            await DeferAsync();
+            await Program.DailyTaskScheduler.RunUpdateNow();
+            await FollowupAsync("Update task executed manually ✅", ephemeral: true);
         }
 
         [SlashCommand("testthis", "Developer Command. Admin only!")]
@@ -112,11 +310,11 @@ namespace DXT_Resultmaker.Modules
         }
 
         [SlashCommand("matches", "Returns your matches for the upcoming week or any other week.")]
-        public async Task FindMatches([Choice("Master", (int)Tiers.Master), Choice("Elite", (int)Tiers.Elite), Choice("Rival", (int)Tiers.Rival), 
-            Choice("Challenger", (int)Tiers.Challenger), Choice("Prospect", (int)Tiers.Prospect), Choice("Academy", (int)Tiers.Academy)]
+        public async Task FindMatches([Choice("Master", (int)TierId.Master), Choice("Elite", (int)TierId.Elite), Choice("Rival", (int)TierId.Rival), 
+            Choice("Challenger", (int)TierId.Challenger), Choice("Prospect", (int)TierId.Prospect), Choice("Academy", (int)TierId.Academy)]
             int tier = -1,
 
-            [Autocomplete(typeof(AutoCompleteHandlerBase))] string franchise = HelperFactory.defaultFranchise,
+            [Autocomplete(typeof(AutoCompleteHandlerBase))] string franchise = HelperFactory.DefaultFranchiseConst,
 
             [Choice("1", 1), Choice("2", 2), Choice("3", 3), Choice("4", 4), Choice("5", 5),
              Choice("6", 6), Choice("7", 7), Choice("8", 8), Choice("9", 9)]
@@ -128,7 +326,7 @@ namespace DXT_Resultmaker.Modules
             {
                 if (week == -1)
                 {
-                    week = (ISOWeek.GetWeekOfYear(TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time"))) - HelperFactory.seasonCalenderWeek);
+                    week = (ISOWeek.GetWeekOfYear(TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time"))) - HelperFactory.SeasonCalenderWeek);
 
                     if (week > 9)
                     {
@@ -155,7 +353,7 @@ namespace DXT_Resultmaker.Modules
                 
                 string matches = "";
                 // Make API call to get the matches and the franchise
-                var client = new ApiClient(HelperFactory.defaultAPIUrl);
+                var client = new ApiClient(HelperFactory.DefaultAPIUrl);
                 var matchesData = await client.GetMatchesAsync();
                 var allFranchiseData = await client.GetAllFranchisesAsync();
                 var franchiseData = allFranchiseData.Where(x => x.Name == franchise).FirstOrDefault();
@@ -172,10 +370,10 @@ namespace DXT_Resultmaker.Modules
                         continue; // Skip if the tier does not match
                     }
                     string tierMatches = "";
-                    var teamMatches = matchesData.Where(x => x.Week == week && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id)).ToList();
+                    var teamMatches = matchesData.Where(x => x.Week == week && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id) && x.Format == "League Play").ToList();
                     if (teamMatches.Count > 0)
                     {
-                        tierMatches += $"{HelperFactory.MakeDiscordEmoteString(HelperFactory.tiers[teamTier.TierId - 36], HelperFactory.emote_guild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
+                        tierMatches += $"{HelperFactory.MakeDiscordEmoteString(HelperFactory.Tiers.Where(x => x.Value == teamTier.TierId).FirstOrDefault().Key, HelperFactory.SaveData.EmoteGuild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
                         foreach (var match in teamMatches)
                         {
                             if (match is null) continue;
@@ -188,8 +386,8 @@ namespace DXT_Resultmaker.Modules
                             string currentMatchDate = match.ScheduledDate != null
                                 ? $"> {match.ScheduledDate:dd.MM.yyyy HH:mm}\n"
                                 : "> *Not Scheduled*\n";
-                            var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.emote_guild);
-                            var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.emote_guild);
+                            var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
+                            var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
                             tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n {currentMatchDate}";
                             //tierMatches += $"> `{match.ExternalId}`\n> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway} \n{currentMatchDate}";
                         }
@@ -199,7 +397,7 @@ namespace DXT_Resultmaker.Modules
                 var userName = Context.Guild.Users.Where(x => x.Id == Context.User.Id).FirstOrDefault()?.Nickname;
                 userName ??= Context.User.GlobalName;
 
-                var emoteUrl = HelperFactory.MakeDiscordEmoteString(franchiseData.Prefix, HelperFactory.emote_guild);
+                var emoteUrl = HelperFactory.MakeDiscordEmoteString(franchiseData.Prefix, HelperFactory.SaveData.EmoteGuild);
                 var logoUrl = franchiseData.Logo ?? "";
                 var color = HelperFactory.GetTierColor(tier);
                 var emb = new EmbedBuilder()
@@ -228,23 +426,6 @@ namespace DXT_Resultmaker.Modules
 
         }
 
-        [SlashCommand("refresh", "Refreshed the command pattern. This is an admin command.")]
-        public async Task RefreshCommands()
-        {
-            if (Context.User.Id == 300570127869411329)
-            {
-                await DeferAsync();
-                // await CommandHandler._interactions.RestClient.BulkOverwriteGlobalCommands(Array.Empty<ApplicationCommandProperties>());
-                await CommandHandler._interactions.RegisterCommandsToGuildAsync(1093943074746531910, true);
-                await CommandHandler._interactions.RegisterCommandsToGuildAsync(690948036540760147, true);
-                await CommandHandler._interactions.RegisterCommandsToGuildAsync(1093941417061126174, true);
-                await FollowupAsync("All set!");
-            }
-            else
-            {
-                await RespondAsync("This is a developer-only command!");
-            }
-        }
     }
 
 }

@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace DXT_Resultmaker
+﻿namespace DXT_Resultmaker
 {
-    public enum Tiers
+    public enum TierId
     {
         Master = 36,
         Elite = 37,

@@ -10,14 +10,14 @@ namespace DXT_Resultmaker.Modules
         [SlashCommand("fixtures", "Returns all games that have not been scheduled yet!")]
         public async Task Fixtures(
             [Choice("1", 1), Choice("2", 2), Choice("3", 3), Choice("4", 4), Choice("5", 5), Choice("6", 6), Choice("7", 7), Choice("8", 8), Choice("9", 9)] int week = -1,
-            [Autocomplete(typeof(AutoCompleteHandlerBase))] string franchise = HelperFactory.defaultFranchise)
+            [Autocomplete(typeof(AutoCompleteHandlerBase))] string franchise = HelperFactory.DefaultFranchiseConst)
         {
             await DeferAsync();
             try
             {
                 if (week == -1)
                 {
-                    week = (ISOWeek.GetWeekOfYear(TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time"))) - HelperFactory.seasonCalenderWeek);
+                    week = (ISOWeek.GetWeekOfYear(TimeZoneInfo.ConvertTime(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("W. Europe Standard Time"))) - HelperFactory.SeasonCalenderWeek);
 
                     if (week > 9)
                     {
@@ -25,7 +25,7 @@ namespace DXT_Resultmaker.Modules
                     }
                 }
                 // Make API call to get the matches and the franchise
-                var client = new ApiClient(HelperFactory.defaultAPIUrl);
+                var client = new ApiClient(HelperFactory.DefaultAPIUrl);
                 var matchesData = await client.GetMatchesAsync();
                 var allFranchiseData = await client.GetAllFranchisesAsync();
                 var franchiseData = allFranchiseData.Where(x => x.Name == franchise).FirstOrDefault();
@@ -41,7 +41,7 @@ namespace DXT_Resultmaker.Modules
                     var teamMatches = matchesData.Where(x => x.Week == week && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id)).ToList();
                     if (teamMatches.Count > 0)
                     {
-                        tierMatches += $"{HelperFactory.MakeDiscordEmoteString(HelperFactory.tiers[teamTier.TierId - 36], HelperFactory.emote_guild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
+                        tierMatches += $"{HelperFactory.MakeDiscordEmoteString(HelperFactory.Tiers.Where(x => x.Value == teamTier.TierId).FirstOrDefault().Key, HelperFactory.SaveData.EmoteGuild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
                         foreach (var match in teamMatches)
                         {
                             if (match is null || match.Format != "League Play") continue;
@@ -52,8 +52,8 @@ namespace DXT_Resultmaker.Modules
                                 continue; // Skip if teams are not found
                             }
                             string currentMatchDate = "> " + HelperFactory.ToDiscordTimestamp(match.ScheduledDate);
-                            var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.emote_guild);
-                            var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.emote_guild);
+                            var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
+                            var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
                             tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n {currentMatchDate}";
                         }
                         allTierMatches += tierMatches + "\n";
@@ -63,7 +63,7 @@ namespace DXT_Resultmaker.Modules
                 var userName = Context.Guild.Users.Where(x => x.Id == Context.User.Id).FirstOrDefault()?.Nickname;
                 userName ??= Context.User.GlobalName;
 
-                var emoteUrl = HelperFactory.MakeDiscordEmoteString(franchiseData.Prefix, HelperFactory.emote_guild);
+                var emoteUrl = HelperFactory.MakeDiscordEmoteString(franchiseData.Prefix, HelperFactory.SaveData.EmoteGuild);
                 var bannerUrl = franchiseData.Banner ?? "";
                 var logoUrl = franchiseData.Logo ?? "";
                 int hexValue = int.Parse(franchiseData.Hex1.TrimStart('#'), NumberStyles.HexNumber);

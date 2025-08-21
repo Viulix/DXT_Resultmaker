@@ -23,7 +23,7 @@ namespace DXT_Resultmaker
             RawContent = rawContent;
         }
     }
-    public class FranchiseData
+    public class Franchise
     {
         [JsonPropertyName("id")] public int Id { get; set; }
         [JsonPropertyName("name")] public string Name { get; set; }
@@ -43,33 +43,6 @@ namespace DXT_Resultmaker
         [JsonPropertyName("hex2")] public string Hex2 { get; set; }
         [JsonPropertyName("hex3")] public string Hex3 { get; set; }
         [JsonPropertyName("teams")] public List<Team> Teams { get; set; } = new();
-    }
-    public class FranchiseEntry
-    {
-        [JsonPropertyName("id")] public int Id { get; set; }
-        [JsonPropertyName("franchise_id")] public int FranchiseId { get; set; }
-        [JsonPropertyName("season_id")] public int SeasonId { get; set; }
-        [JsonPropertyName("logo")] public string Logo { get; set; }
-        [JsonPropertyName("prefix")] public string Prefix { get; set; }
-        [JsonPropertyName("gm")] public int? Gm { get; set; }
-        [JsonPropertyName("agm1")] public int? Agm1 { get; set; }
-        [JsonPropertyName("agm2")] public int? Agm2 { get; set; }
-        [JsonPropertyName("emoji")] public string Emoji { get; set; }
-        [JsonPropertyName("name")] public string Name { get; set; }
-        [JsonPropertyName("role_id")] public int? RoleId { get; set; }
-        [JsonPropertyName("conference_id")] public int? ConferenceId { get; set; }
-        [JsonPropertyName("order_draw")] public int? OrderDraw { get; set; }
-        [JsonPropertyName("draft_lottery")] public string DraftLottery { get; set; }
-        [JsonPropertyName("hex1")] public string Hex1 { get; set; }
-        [JsonPropertyName("hex2")] public string Hex2 { get; set; }
-        [JsonPropertyName("hex3")] public string Hex3 { get; set; }
-        [JsonPropertyName("banner")] public string Banner { get; set; }
-        [JsonPropertyName("league_id")] public int? LeagueId { get; set; }
-        [JsonPropertyName("league_slug")] public string LeagueSlug { get; set; }
-        [JsonPropertyName("league_short_name")] public string LeagueShortName { get; set; }
-
-        [JsonPropertyName("teams")]
-        public List<Team> Teams { get; set; } = new();
     }
     public class Team
     {
@@ -169,15 +142,15 @@ namespace DXT_Resultmaker
                 throw new ApiException($"Failed to deserialize response: {ex.Message}", response.StatusCode, raw);
             }
         }
-        public async Task<FranchiseData> GetFranchiseByNameAsync(string name)
+        public async Task<Franchise> GetFranchiseByNameAsync(string name)
         {
             var allFranchises = await GetAllFranchisesAsync();
             var franchise = allFranchises.Where(x => x.Name == name).FirstOrDefault();
             return franchise;
         }
-        public async Task<List<FranchiseData>> GetAllFranchisesAsync()
+        public async Task<List<Franchise>> GetAllFranchisesAsync()
         {
-            var resp = await GetAsync<List<FranchiseData>>($"/league-manager/EU/franchises");
+            var resp = await GetAsync<List<Franchise>>($"/league-manager/EU/franchises");
             if (!resp.Success)
                 throw new ApiException(resp.Message);
             return resp.Data;
@@ -192,33 +165,13 @@ namespace DXT_Resultmaker
         }
         public static string MakeTierIdToTiername(int tierId)
         {
-            string tierName = "N/V";
-
-            switch ((Tiers)tierId)
+            var tier = HelperFactory.Tiers.FirstOrDefault(x => x.Value == tierId);
+            if (tier.Equals(default(KeyValuePair<string, int>)))
             {
-                case Tiers.Master:
-                    tierName = "Master";
-                    break;
-                case Tiers.Elite:
-                    tierName = "Elite";
-                    break;
-                case Tiers.Rival:
-                    tierName = "Rival";
-                    break;
-                case Tiers.Challenger:
-                    tierName = "Challenger";
-                    break;
-                case Tiers.Prospect:
-                    tierName = "Prospect";
-                    break;
-                case Tiers.Academy:
-                    tierName = "Academy";
-                    break;
-                default:
-                    break;
+                Console.WriteLine($"Unknown Tier ID: {tierId}");
+                return "Unknown Tier";
             }
-
-            return tierName;
+            return tier.Key;
         }
         public async Task<List<SignedUpPlayer>> GetPlayerListAsync()
         {
@@ -271,7 +224,7 @@ namespace DXT_Resultmaker
                 throw new ApiException($"No matches found for team ID {teamId}");
             return teamMatches;
         }
-        public static Team GetTierteam(int teamId, List<FranchiseData> allFranchises)
+        public static Team GetTierteam(int teamId, List<Franchise> allFranchises)
         {
             Team team = new();
             foreach (var franchise in allFranchises)
