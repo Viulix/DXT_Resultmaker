@@ -15,7 +15,7 @@ namespace DXT_Resultmaker
         public async Task MainAsync()
         {
             // Read Save Data
-            string token = File.ReadAllText(".\\token.txt");
+            string token = File.ReadAllText("./token.txt");
 
             // Load the save data in HelperFactory
             HelperFactory.LoadSaveData();
