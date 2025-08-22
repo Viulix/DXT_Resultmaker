@@ -33,7 +33,7 @@ namespace DXT_Resultmaker
         public const int SeasonCalenderWeek = 33;
 
         // Path
-        public static readonly string SaveDataPath = "./savedata.json";
+        public static readonly string SaveDataPath = ".\\savedata.json";
 
         public static SaveData SaveData { get; private set; } = new();
         public static void LoadSaveData()
