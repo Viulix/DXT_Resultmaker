@@ -53,6 +53,7 @@ namespace DXT_Resultmaker
                 SaveData = data ?? new SaveData();
             }
         }
+
         public static void Save()
         {
             string json = Newtonsoft.Json.JsonConvert.SerializeObject(SaveData, Newtonsoft.Json.Formatting.Indented);
@@ -124,11 +125,13 @@ namespace DXT_Resultmaker
             SaveData.EmoteGuild = emoteGuild;
             Save();
         }
+
         public static void AddGuild(ulong guildId)
         {
             SaveData.GuildIds.Add(guildId);
             Save();
         }
+
         public static void RemoveGuild(ulong guildId)
         {
             SaveData.GuildIds.Remove(guildId);
