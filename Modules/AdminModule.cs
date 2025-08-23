@@ -114,47 +114,62 @@ namespace DXT_Resultmaker.Modules
         }
 
         [SlashCommand("set_emoteguild", "Set the emote guild ID.")]
-        public async Task SetEmoteGuild(ulong guildId)
+        public async Task SetEmoteGuild(string guildId)
         {
             if (!AdminModule.IsAdmin(Context.User.Id))
             {
                 await RespondAsync("You are not an admin.", ephemeral: true);
                 return;
             }
-
-            HelperFactory.SetEmoteGuild(guildId);
+            if (!ulong.TryParse(guildId, out ulong id))
+            {
+                await RespondAsync("Ungültige ID!");
+                return;
+            }
+            HelperFactory.SetEmoteGuild(id);
             await RespondAsync($"Emote guild set to `{guildId}` ✅", ephemeral: true);
         }
         [SlashCommand("add_guild", "Adds an guild id to the bot's guilds.")]
-        public async Task AddGuild(ulong guildId)
+        public async Task AddGuild(string guildId)
         {
             if (!AdminModule.IsAdmin(Context.User.Id))
             {
                 await RespondAsync("You are not an admin.", ephemeral: true);
                 return;
             }
-            if (HelperFactory.SaveData.GuildIds.Contains(guildId))
+            if (!ulong.TryParse(guildId, out ulong id))
+            {
+                await RespondAsync("Invalid Id!");
+                return;
+            }
+
+            if (HelperFactory.SaveData.GuildIds.Contains(id))
             {
                 await RespondAsync("This guild id is already added.", ephemeral: true);
                 return;
             }
-            HelperFactory.AddGuild(guildId);
+            HelperFactory.AddGuild(id);
             await RespondAsync($"Added this id: `{guildId}` ✅", ephemeral: true);
         }
         [SlashCommand("remove_guild", "Removes an guild id from the bot's guilds.")]
-        public async Task RemoveGuild(ulong guildId)
+        public async Task RemoveGuild(string guildId)
         {
             if (!AdminModule.IsAdmin(Context.User.Id))
             {
                 await RespondAsync("You are not an admin.", ephemeral: true);
                 return;
             }
-            if (!HelperFactory.SaveData.GuildIds.Contains(guildId))
+            if (!ulong.TryParse(guildId, out ulong id))
+            {
+                await RespondAsync("Invalid Id!");
+                return;
+            }
+            if (!HelperFactory.SaveData.GuildIds.Contains(id))
             {
                 await RespondAsync("This guild id was not found in the stored guilds.", ephemeral: true);
                 return;
             }
-            HelperFactory.AddGuild(guildId);
+            HelperFactory.RemoveGuild(id);
             await RespondAsync($"Removed this id: `{guildId}` ✅", ephemeral: true);
         }
 
