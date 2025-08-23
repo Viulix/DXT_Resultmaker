@@ -80,7 +80,7 @@ namespace DXT_Resultmaker
         public static void ReplaceRole(int tierIndex, ulong roleId)
         {
             while (SaveData.RoleIds.Count <= tierIndex)
-                SaveData.RoleIds.Add(0); 
+                SaveData.RoleIds.Add(0);
 
             SaveData.RoleIds[tierIndex] = roleId;
             AdminModule.TierDiscordRoleId = SaveData.RoleIds;
@@ -179,17 +179,17 @@ namespace DXT_Resultmaker
 
 
                 string msg = "N/V";
-            foreach (var emote in emotes)
-            {
-                if (emote.Name == abbrevation)
+                foreach (var emote in emotes)
                 {
-                    msg = "<:" + abbrevation + ":" + emote.Id + ">";
-                    break;
+                    if (emote.Name == abbrevation)
+                    {
+                        msg = "<:" + abbrevation + ":" + emote.Id + ">";
+                        break;
+                    }
                 }
+                return msg;
             }
-            return msg;
-            }
-            catch  (Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
                 return "N/V";
@@ -223,7 +223,8 @@ namespace DXT_Resultmaker
                 return "N/V";
             }
         }
-        public static List<string> SplitAndSortResultString(string raw_result) { 
+        public static List<string> SplitAndSortResultString(string raw_result)
+        {
             var result = new List<string>();
             var splitted_raw_Result = raw_result.Split(':').ToList();
             splitted_raw_Result = splitted_raw_Result.Where((item, index) => index % 2 != 0).ToList();
@@ -239,7 +240,7 @@ namespace DXT_Resultmaker
                 .WithCurrentTimestamp()
                 .WithColor(SaveData.MainColor);
             return embed;
-                
+
         }
         public static string ToDiscordTimestamp(DateTime? date, string format = "f", string fallback = "*Not Scheduled*")
         {
@@ -285,7 +286,7 @@ namespace DXT_Resultmaker
                 var teamMatches = allMatches.Where(x => x.Week == week && x.Format == "League Play" && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id)).ToList();
                 if (teamMatches.Count > 0)
                 {
-                    tierMatches += $"{MakeDiscordEmoteString(Tiers.Where(x =>x.Value == teamTier.TierId).FirstOrDefault().Key, SaveData.EmoteGuild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
+                    tierMatches += $"{MakeDiscordEmoteString(Tiers.Where(x => x.Value == teamTier.TierId).FirstOrDefault().Key, SaveData.EmoteGuild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
                     foreach (var match in teamMatches)
                     {
                         if (match is null || match.Format != "League Play") continue;
@@ -295,7 +296,7 @@ namespace DXT_Resultmaker
 
                         // Finde den Captains des Gegner Teams
                         var matchCaptains = allCaptains.Where(x => x.TeamId == awayTeam.Id || x.TeamId == homeTeam.Id);
-                            var captain = matchCaptains.Where(x => !requestFranchiseTeamIds.Contains(x.TeamId ?? -1)).FirstOrDefault();
+                        var captain = matchCaptains.Where(x => !requestFranchiseTeamIds.Contains(x.TeamId ?? -1)).FirstOrDefault();
 
                         string currentMatchDate = "> " + ToDiscordTimestamp(match.ScheduledDate);
                         var discordEmoteStringHome = MakeDiscordEmoteString(allFranchises.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, SaveData.EmoteGuild);
@@ -308,10 +309,10 @@ namespace DXT_Resultmaker
             return allTierMatches;
         }
         public static string RemoveCaptainLine(string input)
-            {
-                // Sucht nach "> *Captain is: ...*" bis zum nächsten Zeilenumbruch
-                return Regex.Replace(input, @"> \*Captain is:.*\*\r?\n", "");
-            }
+        {
+            // Sucht nach "> *Captain is: ...*" bis zum nächsten Zeilenumbruch
+            return Regex.Replace(input, @"> \*Captain is:.*\*\r?\n", "");
+        }
         public static void ReplaceChannel(int channelIndex, ulong channelId)
         {
             while (SaveData.ChannelIds.Count <= channelIndex)
@@ -319,7 +320,24 @@ namespace DXT_Resultmaker
             if (!SaveData.ChannelIds.Contains(channelId))
                 SaveData.ChannelIds[channelIndex] = channelId;
             else Console.WriteLine("Duplicated channel. Addition failed.");
-                Save();
+            Save();
         }
-}
+        public static DateTime GetGermanTime()
+        {
+            DateTime utcNow = DateTime.UtcNow;
+
+            try
+            {
+                // Für Windows
+                TimeZoneInfo germanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Central European Standard Time");
+                return TimeZoneInfo.ConvertTimeFromUtc(utcNow, germanTimeZone);
+            }
+            catch (TimeZoneNotFoundException)
+            {
+                // Für Linux / macOS
+                TimeZoneInfo germanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
+                return TimeZoneInfo.ConvertTimeFromUtc(utcNow, germanTimeZone);
+            }
+        }
+    }
 }
