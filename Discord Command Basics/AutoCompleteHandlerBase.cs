@@ -15,7 +15,11 @@ namespace DXT_Resultmaker
 
                 if (string.IsNullOrEmpty(value))
                     return Task.FromResult(AutocompletionResult.FromSuccess());
-                var matches = HelperFactory.Franchises;
+                var matches = HelperFactory.SaveData.Franchises
+                                            .Select(y => y.Name)
+                                            .Where(x => x.Contains(value, StringComparison.OrdinalIgnoreCase)) 
+                                            .Take(25) 
+                                            .ToList();
                 return Task.FromResult(AutocompletionResult.FromSuccess(matches.Select(x => new AutocompleteResult(x, x))));
             }
             catch (Exception ex)
