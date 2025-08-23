@@ -38,6 +38,7 @@ namespace DXT_Resultmaker
 
         public void SetWeeklyTime(DayOfWeek day, TimeSpan time)
         {
+            Console.WriteLine($"[Scheduler{DateTime.Now}] Setting weekly message time to {day} at {time}");
             _weeklyDay = day;
             _weeklyTime = time;
             ScheduleWeeklyMessages(); // Neu starten
