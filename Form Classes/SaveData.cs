@@ -11,7 +11,7 @@
         public string DefaultFranchise { get; set; } = "";
         public string DefaultAPIUrl { get; set; } = "";
         public int SeasonCalenderWeek { get; set; } = 33;
-        public DateTime SeasonStart { get; set; } = DateTime.Now;
+        public DateTime SeasonStart { get; set; } = HelperFactory.GetGermanTime();
         public DateTime StartDate { get; set; } = new DateTime(25, 8, 25, 14, 0, 0);
         public uint MainColor { get; set; } = new Discord.Color(0x000000);
         public static Dictionary<int, uint> TierColors { get; set; } = HelperFactory.TierColors;
