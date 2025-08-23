@@ -19,9 +19,9 @@ namespace DXT_Resultmaker
         private int _currentWeek; // Keeps track of the week index
         private static ulong _guildId; // The guild ID where the messages will be sent
 
-        private TimeSpan _updateInterval = TimeSpan.FromHours(1);
-        private DayOfWeek _weeklyDay = DayOfWeek.Monday;
-        private TimeSpan _weeklyTime = new(14, 0, 0); // 14:00 Berlin time
+        private TimeSpan _updateInterval = TimeSpan.FromMinutes(1);
+        private DayOfWeek _weeklyDay = DayOfWeek.Saturday;
+        private TimeSpan _weeklyTime = new(23, 30, 0);
 
         public async Task Start()
         {
@@ -46,7 +46,7 @@ namespace DXT_Resultmaker
         private void ScheduleWeeklyMessages()
         {
             _weeklyMessageTimer?.Dispose();
-            DateTime now = TimeZoneInfo.ConvertTime(DateTime.UtcNow, _berlinTimeZone);
+            DateTime now = DateTime.Now;
 
             int daysUntilTarget = ((_weeklyDay - now.DayOfWeek + 7) % 7);
             DateTime nextTarget = now.Date.AddDays(daysUntilTarget).Add(_weeklyTime);
@@ -65,7 +65,7 @@ namespace DXT_Resultmaker
         {
             _updateTimer?.Dispose();
 
-            DateTime now = TimeZoneInfo.ConvertTime(DateTime.UtcNow, _berlinTimeZone);
+            DateTime now = DateTime.Now;
             DateTime nextRun = now.Add(_updateInterval);
             TimeSpan initialDelay = nextRun - now;
 
@@ -88,7 +88,7 @@ namespace DXT_Resultmaker
 
             _currentWeek++;
 
-            Console.WriteLine($"[Scheduler] Sending weekly messages for Week {_currentWeek}...");
+            Console.WriteLine($"[Scheduler {DateTime.Now}] Sending weekly messages for Week {_currentWeek}...");
 
             if(_channelIds.Count == 0)
             {
@@ -168,7 +168,7 @@ namespace DXT_Resultmaker
         /// </summary>
         private async Task UpdateFixtureMessagesAsync()
         {
-            Console.WriteLine("[Scheduler] Updating messages...");
+            Console.WriteLine($"[Scheduler: {DateTime.Now}] Updating messages...");
             _channelIds = HelperFactory.SaveData.ChannelIds;
             _guildId = GetGuildId();
 
@@ -190,7 +190,7 @@ namespace DXT_Resultmaker
             var bannerUrl = franchise?.Banner ?? " ";
             var logoUrl = franchise?.Logo ?? " ";
             // Filter matches to include only those belonging to the default franchise and within the next 2 hours (+/- 5 minutes)
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var timeWindowStart = now.AddMinutes(-5);
             var timeWindowEnd = now.AddHours(2).AddMinutes(5);
 
