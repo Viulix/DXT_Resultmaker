@@ -133,7 +133,7 @@ namespace DXT_Resultmaker
                     if (index == 0)
                     {
                         // First channel gets the full message as description
-                        embedToSend = embedBuilder.WithDescription(allMessages).Build();
+                        embedToSend = embedBuilder.WithDescription(HelperFactory.RemoveCaptainLine(allMessages)).Build();
                     }
                     else
                     {
@@ -208,17 +208,6 @@ namespace DXT_Resultmaker
                 var isWithinTimeWindow = matchTime >= timeWindowStart && matchTime <= timeWindowEnd;
                 return isDefaultFranchise && isWithinTimeWindow;
             }).ToList();
-            // Add one test match for the first channel
-
-            relevantMatches.Add(new Match
-            {
-                HomeTeamId =  1191,
-                AwayTeamId =  1209,
-                ScheduledDate = now.AddMinutes(10), // Test match in 10 minutes
-                TierId = 37, // Example tier ID
-                Format = "League Play",
-            });
-      
 
             if (!relevantMatches.Any())
             {

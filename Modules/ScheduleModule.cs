@@ -28,6 +28,8 @@ namespace DXT_Resultmaker.Modules
                 var client = new ApiClient(HelperFactory.DefaultAPIUrl);
                 var matchesData = await client.GetMatchesAsync();
                 var allFranchiseData = await client.GetAllFranchisesAsync();
+                var allTeams = allFranchiseData.Select(y => y.Teams);
+                var allPlayers = await client.GetPlayerListAsync();
                 var franchiseData = allFranchiseData.Where(x => x.Name == franchise).FirstOrDefault();
                 if (franchiseData == null || matchesData == null)
                 {
@@ -51,6 +53,15 @@ namespace DXT_Resultmaker.Modules
                             {
                                 continue; // Skip if teams are not found
                             }
+                            // Ermittle das gegnerische Team, das nicht zu franchiseData gehört
+                            Team otherTeam = teamTier.Id == homeTeam.Id ? awayTeam : homeTeam;
+                            string captainDisplay = "";
+                            // Angenommen, dass jedes Team eine Eigenschaft 'Captain' enthält
+                            if (allTeams.Any())
+                            {
+                                var captain = allPlayers.Where(y => y.TeamId == otherTeam.Id && y.Captain == true).FirstOrDefault();
+                                captainDisplay = $" - Captain: {captain?.User.Name ?? "N/V"}";
+                            }
                             string currentMatchDate = "> " + HelperFactory.ToDiscordTimestamp(match.ScheduledDate);
                             var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
                             var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
@@ -68,7 +79,7 @@ namespace DXT_Resultmaker.Modules
                 var logoUrl = franchiseData.Logo ?? "";
                 int hexValue = int.Parse(franchiseData.Hex1.TrimStart('#'), NumberStyles.HexNumber);
 
-                Discord.Color color = new Discord.Color((uint)hexValue);
+                Discord.Color color = new((uint)hexValue);
                 var emb = new EmbedBuilder()
                 .WithColor(color)
                 .WithTitle($"{emoteUrl} Fixtures of week " + week)
@@ -77,7 +88,6 @@ namespace DXT_Resultmaker.Modules
                 .WithCurrentTimestamp()
                 .WithImageUrl(bannerUrl)
                 .WithThumbnailUrl(logoUrl);
-
 
                 await FollowupAsync(embed: emb.Build());
             }

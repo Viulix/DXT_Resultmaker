@@ -1,4 +1,5 @@
-﻿using Discord;
+﻿using System.Text.RegularExpressions;
+using Discord;
 using DXT_Resultmaker.Modules;
 using System.Globalization;
 
@@ -266,39 +267,58 @@ namespace DXT_Resultmaker
             }
             // Make API call to get the matches and the franchise
             var client = new ApiClient(DefaultAPIUrl);
-            var matchesData = await client.GetMatchesAsync();
-            var allFranchiseData = await client.GetAllFranchisesAsync();
-            var franchiseData = allFranchiseData.Where(x => x.Name == franchise).FirstOrDefault();
-            if (franchiseData == null || matchesData == null)
+            var allMatches = await client.GetMatchesAsync();
+            var allFranchises = await client.GetAllFranchisesAsync();
+            var allPlayers = await client.GetPlayerListAsync();
+            var allCaptains = allPlayers.Where(x => x.Captain == true).ToList();
+
+            var requestFranchise = allFranchises.Where(x => x.Name == franchise).FirstOrDefault() ?? new();
+            var requestFranchiseTeamIds = requestFranchise.Teams.Select(y => y.Id).ToList();
+            if (requestFranchise == null || allMatches == null)
             {
                 return null;
             }
             string allTierMatches = "";
-            foreach (Team teamTier in franchiseData.Teams)
+            foreach (Team teamTier in requestFranchise.Teams)
             {
                 string tierMatches = "";
-                var teamMatches = matchesData.Where(x => x.Week == week && x.Format == "League Play" && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id)).ToList();
+                var teamMatches = allMatches.Where(x => x.Week == week && x.Format == "League Play" && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id)).ToList();
                 if (teamMatches.Count > 0)
                 {
                     tierMatches += $"{MakeDiscordEmoteString(Tiers.Where(x =>x.Value == teamTier.TierId).FirstOrDefault().Key, SaveData.EmoteGuild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
                     foreach (var match in teamMatches)
                     {
                         if (match is null || match.Format != "League Play") continue;
-                        var awayTeam = ApiClient.GetTierteam((int)match.AwayTeamId, allFranchiseData);
-                        var homeTeam = ApiClient.GetTierteam((int)match.HomeTeamId, allFranchiseData);
-                        if (homeTeam is null || awayTeam is null)
-                        {
-                            continue; // Skip if teams are not found
-                        }
+                        var awayTeam = ApiClient.GetTierteam((int)match.AwayTeamId, allFranchises);
+                        var homeTeam = ApiClient.GetTierteam((int)match.HomeTeamId, allFranchises);
+                        if (homeTeam is null || awayTeam is null) continue;
+
+                        // Finde den Captains des Gegner Teams
+                        var matchCaptains = allCaptains.Where(x => x.TeamId == awayTeam.Id || x.TeamId == homeTeam.Id);
+                            var captain = matchCaptains.Where(x => !requestFranchiseTeamIds.Contains(x.TeamId ?? -1)).FirstOrDefault();
+
                         string currentMatchDate = "> " + ToDiscordTimestamp(match.ScheduledDate);
-                        var discordEmoteStringHome = MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, SaveData.EmoteGuild);
-                        var discordEmoteStringAway = MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, SaveData.EmoteGuild);
-                        tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n {currentMatchDate}";
+                        var discordEmoteStringHome = MakeDiscordEmoteString(allFranchises.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, SaveData.EmoteGuild);
+                        var discordEmoteStringAway = MakeDiscordEmoteString(allFranchises.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, SaveData.EmoteGuild);
+                        tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n {currentMatchDate} > *Captain is: {captain?.User.Name ?? "N/V"}*\n\n";
                     }
                     allTierMatches += tierMatches + "ㅤ\n";
                 }
             }
             return allTierMatches;
         }
-    }
+        public static string RemoveCaptainLine(string input)
+            {
+                // Sucht nach "> *Captain is: ...*" bis zum nächsten Zeilenumbruch
+                return Regex.Replace(input, @"> \*Captain is:.*\*\r?\n", "");
+            }
+        public static void ReplaceChannel(int channelIndex, ulong channelId)
+        {
+            while (SaveData.ChannelIds.Count <= channelIndex)
+                SaveData.ChannelIds.Add(0);
+
+            SaveData.ChannelIds[channelIndex] = channelId;
+            Save();
+        }
+}
 }
