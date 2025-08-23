@@ -487,6 +487,17 @@ namespace DXT_Resultmaker.Modules
 
             // Erstelle eine Liste der Tiernamen
             string tierRolesInfo = "";
+            string channelIdsInfo = "";
+            var channelIds = saveData.ChannelIds;
+            if (channelIds == null || channelIds.Count == 0)
+            {
+                channelIdsInfo += "None";
+            }
+            else if (channelIds.Count > 0)
+            {
+                channelIdsInfo += $"Fixture: <#{channelIds[0]}>\n";
+            }
+
             var tierNames = HelperFactory.Tiers
                 .OrderBy(kv => kv.Value)
                 .Select(kv => kv.Key)
@@ -502,10 +513,15 @@ namespace DXT_Resultmaker.Modules
                 {
                     tierRolesInfo += $"{tierNames[i]}: None\n";
                 }
+                if (channelIds is not null)
+                {
+                    if (channelIds.Count > i + 1 && channelIds[i + 1] != 0)
+                        channelIdsInfo += $"{tierNames[i]}: <#{channelIds[i + 1]}>\n";
+                }
             }
 
             var embed = new EmbedBuilder()
-                .WithTitle("Configs")
+                .WithTitle("⚙️ Configs")
                 .WithColor(new Discord.Color(saveData.MainColor))
                 .WithCurrentTimestamp()
                 .AddField("Default API URL", string.IsNullOrWhiteSpace(saveData.DefaultAPIUrl) ? "N/V" : saveData.DefaultAPIUrl, true)
@@ -518,7 +534,8 @@ namespace DXT_Resultmaker.Modules
                     (saveData.GuildIds != null && saveData.GuildIds.Any())
                         ? string.Join(", ", saveData.GuildIds)
                         : "None", false)
-                .AddField("Tier Rollen", tierRolesInfo, false);
+                .AddField("Tier Rollen", tierRolesInfo, false)
+                .AddField("Fixture Channels", channelIdsInfo, false);
 
             await RespondAsync(embed: embed.Build(), ephemeral: true);
         }
