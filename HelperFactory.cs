@@ -1,4 +1,5 @@
 ﻿using Discord;
+using DXT_Resultmaker.Modules;
 using System.Globalization;
 
 namespace DXT_Resultmaker
@@ -62,6 +63,7 @@ namespace DXT_Resultmaker
         {
             if (!SaveData.Admins.Contains(userId))
                 SaveData.Admins.Add(userId);
+            AdminModule.Admins = SaveData.Admins;
             Save();
         }
 
@@ -69,6 +71,7 @@ namespace DXT_Resultmaker
         {
             if (SaveData.Admins.Contains(userId))
                 SaveData.Admins.Remove(userId);
+            AdminModule.Admins = SaveData.Admins;
             Save();
         }
 
@@ -78,6 +81,7 @@ namespace DXT_Resultmaker
                 SaveData.RoleIds.Add(0); 
 
             SaveData.RoleIds[tierIndex] = roleId;
+            AdminModule.TierDiscordRoleId = SaveData.RoleIds;
             Save();
         }
 
@@ -93,6 +97,7 @@ namespace DXT_Resultmaker
         {
             if (SaveData.RoleIds.Contains(roleId))
                 SaveData.RoleIds.Remove(roleId);
+            AdminModule.TierDiscordRoleId = SaveData.RoleIds;
             Save();
         }
 
@@ -117,6 +122,16 @@ namespace DXT_Resultmaker
         public static void SetEmoteGuild(ulong emoteGuild)
         {
             SaveData.EmoteGuild = emoteGuild;
+            Save();
+        }
+        public static void AddGuild(ulong guildId)
+        {
+            SaveData.GuildIds.Add(guildId);
+            Save();
+        }
+        public static void RemoveGuild(ulong guildId)
+        {
+            SaveData.GuildIds.Remove(guildId);
             Save();
         }
 
