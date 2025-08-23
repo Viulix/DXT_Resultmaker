@@ -291,6 +291,14 @@ namespace DXT_Resultmaker.Modules
             }
 
             // Update the DailyTaskScheduler
+            var today = DateTime.Today;
+            var daysUntilNext = ((int)day - (int)today.DayOfWeek + 7) % 7;
+            var nextOccurrence = today.AddDays(daysUntilNext).Date + parsedTime;
+
+            Program.DailyTaskScheduler.SetWeeklyTime(day, parsedTime);
+
+            // Save the updated values to SaveData
+            HelperFactory.SaveData.StartDate = nextOccurrence;
             Program.DailyTaskScheduler.SetWeeklyTime(day, parsedTime);
 
             // Save the updated values to SaveData
