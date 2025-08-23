@@ -125,6 +125,38 @@ namespace DXT_Resultmaker.Modules
             HelperFactory.SetEmoteGuild(guildId);
             await RespondAsync($"Emote guild set to `{guildId}` ✅", ephemeral: true);
         }
+        [SlashCommand("add_guild", "Adds an guild id to the bot's guilds.")]
+        public async Task AddGuild(ulong guildId)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            if (HelperFactory.SaveData.GuildIds.Contains(guildId))
+            {
+                await RespondAsync("This guild id is already added.", ephemeral: true);
+                return;
+            }
+            HelperFactory.AddGuild(guildId);
+            await RespondAsync($"Added this id: `{guildId}` ✅", ephemeral: true);
+        }
+        [SlashCommand("remove_guild", "Removes an guild id from the bot's guilds.")]
+        public async Task RemoveGuild(ulong guildId)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            if (!HelperFactory.SaveData.GuildIds.Contains(guildId))
+            {
+                await RespondAsync("This guild id was not found in the stored guilds.", ephemeral: true);
+                return;
+            }
+            HelperFactory.AddGuild(guildId);
+            await RespondAsync($"Removed this id: `{guildId}` ✅", ephemeral: true);
+        }
 
         [SlashCommand("set_seasonstart", "Set the season start date.")]
         public async Task SetSeasonStart(DateTime startDate)
