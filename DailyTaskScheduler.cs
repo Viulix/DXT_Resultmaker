@@ -65,7 +65,7 @@ namespace DXT_Resultmaker
         {
             _updateTimer?.Dispose();
 
-            DateTime now = DateTime.Now;
+            DateTime now = HelperFactory.GetGermanTime();
             DateTime nextRun = now.Add(_updateInterval);
             TimeSpan initialDelay = nextRun - now;
 
@@ -85,8 +85,6 @@ namespace DXT_Resultmaker
         {
             _channelIds = HelperFactory.SaveData.ChannelIds;
             _guildId = GetGuildId();
-
-            _currentWeek++;
 
             Console.WriteLine($"[Scheduler {HelperFactory.GetGermanTime()}] Sending weekly messages for Week {_currentWeek}...");
 
@@ -159,6 +157,7 @@ namespace DXT_Resultmaker
                 Thread.Sleep(50);
                 index++;
             }
+            _currentWeek++;
         }
 
         /// <summary>
@@ -305,14 +304,12 @@ namespace DXT_Resultmaker
         }
         public static int GetCurrentWeek(DateTime seasonStart)
         {
+
             // Heute in Berlin
-            var now = TimeZoneInfo.ConvertTime(DateTime.UtcNow,
-                TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin"));
+            var now = HelperFactory.GetGermanTime();
 
             // Differenz in Tagen
             var diffDays = (now.Date - seasonStart.Date).Days;
-
-            // Ganze Wochen seit SeasonStart + 1 (erste Woche = 1, nicht 0)
             return (diffDays / 7) + 1;
         }
 
