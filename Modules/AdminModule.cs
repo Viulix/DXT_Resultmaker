@@ -173,6 +173,8 @@ namespace DXT_Resultmaker.Modules
             await RespondAsync($"Removed this id: `{guildId}` ✅", ephemeral: true);
         }
 
+
+
         [SlashCommand("set_seasonstart", "Set the season start date.")]
         public async Task SetSeasonStart(DateTime startDate)
         {
@@ -472,7 +474,54 @@ namespace DXT_Resultmaker.Modules
             }
 
         }
+        [SlashCommand("config_view", "Zeigt die Konfiguration aus SaveData an (ohne Franchises).")]
+        public async Task ConfigView()
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
 
+            var saveData = HelperFactory.SaveData;
+
+            // Erstelle eine Liste der Tiernamen
+            string tierRolesInfo = "";
+            var tierNames = HelperFactory.Tiers
+                .OrderBy(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToList();
+            for (int i = 0; i < HelperFactory.Tiers.Keys.Count; i++)
+            {
+                // Prüfen, ob ein Rollen-ID für das Tier vorhanden ist
+                if (TierDiscordRoleId != null && TierDiscordRoleId.Count > i && TierDiscordRoleId[i] != 0)
+                {
+                    tierRolesInfo += $"{tierNames[i]}: <@&{TierDiscordRoleId[i]}>\n";
+                }
+                else
+                {
+                    tierRolesInfo += $"{tierNames[i]}: None\n";
+                }
+            }
+
+            var embed = new EmbedBuilder()
+                .WithTitle("Configs")
+                .WithColor(new Discord.Color(saveData.MainColor))
+                .WithCurrentTimestamp()
+                .AddField("Default API URL", string.IsNullOrWhiteSpace(saveData.DefaultAPIUrl) ? "N/V" : saveData.DefaultAPIUrl, true)
+                .AddField("Default Franchise", string.IsNullOrWhiteSpace(saveData.DefaultFranchise) ? "N/V" : saveData.DefaultFranchise, true)
+                .AddField("Emote Guild ID", saveData.EmoteGuild.ToString(), true)
+                .AddField("Season Start", saveData.SeasonStart.ToString("yyyy-MM-dd"), true)
+                .AddField("Season Week", saveData.SeasonCalenderWeek.ToString(), true)
+                .AddField("Admins Count", saveData.Admins?.Count.ToString() ?? "0", true)
+                .AddField("Guild IDs",
+                    (saveData.GuildIds != null && saveData.GuildIds.Any())
+                        ? string.Join(", ", saveData.GuildIds)
+                        : "None", false)
+                .AddField("Tier Rollen", tierRolesInfo, false);
+
+            await RespondAsync(embed: embed.Build(), ephemeral: true);
+        }
     }
 
 }
