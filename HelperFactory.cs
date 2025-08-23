@@ -316,9 +316,10 @@ namespace DXT_Resultmaker
         {
             while (SaveData.ChannelIds.Count <= channelIndex)
                 SaveData.ChannelIds.Add(0);
-
-            SaveData.ChannelIds[channelIndex] = channelId;
-            Save();
+            if (!SaveData.ChannelIds.Contains(channelId))
+                SaveData.ChannelIds[channelIndex] = channelId;
+            else Console.WriteLine("Duplicated channel. Addition failed.");
+                Save();
         }
 }
 }

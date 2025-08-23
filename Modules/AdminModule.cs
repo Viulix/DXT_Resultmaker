@@ -189,8 +189,13 @@ namespace DXT_Resultmaker.Modules
             }
             int offset = 0;
             if (tierId != 0) offset = 35;
-            HelperFactory.ReplaceChannel(tierId - offset,id);
-            await RespondAsync($"Set the channel for `{HelperFactory.Tiers.Where(x => x.Value == tierId).FirstOrDefault().Key ?? "Fixture"}` to: <#{channelId}> ✅", ephemeral: true);
+            if (HelperFactory.SaveData.RoleIds.Contains(id))
+            {
+                HelperFactory.ReplaceChannel(tierId - offset,id);
+                await RespondAsync($"Set the channel for `{HelperFactory.Tiers.Where(x => x.Value == tierId).FirstOrDefault().Key ?? "Fixture"}` to: <#{channelId}> ✅", ephemeral: true); return;
+            }
+            else
+                await RespondAsync("This channel is already set to some other fixtures. That doesn't work.", ephemeral: true);
         }
 
         [SlashCommand("set_seasonstart", "Set the season start date.")]
