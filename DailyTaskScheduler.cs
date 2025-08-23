@@ -163,9 +163,6 @@ namespace DXT_Resultmaker
 
         /// <summary>
         /// Updates all tracked messages once per hour.
-        /// </summary>
-        /// <summary>
-        /// Updates all tracked messages once per hour.
         /// The first channel gets the full fixture list,
         /// all other channels get their respective single message.
         /// </summary>
@@ -174,7 +171,6 @@ namespace DXT_Resultmaker
             Console.WriteLine("[Scheduler] Updating messages...");
             _channelIds = HelperFactory.SaveData.ChannelIds;
             _guildId = GetGuildId();
-
 
             if (_messageIds.Count == 0)
             {
@@ -202,18 +198,11 @@ namespace DXT_Resultmaker
             {
                 // Check if the match belongs to the default franchise
                 var isDefaultFranchise = franchise.Teams.Any(team => team.Id == match.HomeTeamId || team.Id == match.AwayTeamId);
-
                 // Check if the match is within the time window
                 var matchTime = match.ScheduledDate;
                 var isWithinTimeWindow = matchTime >= timeWindowStart && matchTime <= timeWindowEnd;
                 return isDefaultFranchise && isWithinTimeWindow;
             }).ToList();
-
-            if (!relevantMatches.Any())
-            {
-                Console.WriteLine("[Scheduler] No relevant matches found within the time window. There will not be a reminder.");
-                return;
-            }
 
             var guild = CommandHandler._client.Guilds.FirstOrDefault(x => x.Id == _guildId);
             if (guild == null)
@@ -229,7 +218,6 @@ namespace DXT_Resultmaker
                 .WithImageUrl(bannerUrl)
                 .WithThumbnailUrl(logoUrl);
 
-            int index = 0;
             foreach (var kvp in _messageIds)
             {
                 ulong channelId = kvp.Key;
@@ -240,34 +228,43 @@ namespace DXT_Resultmaker
                 {
                     try
                     {
-                        var message = await textChannel.GetMessageAsync(messageId) as Discord.IUserMessage;
-                        if (message == null)
+                        if (await textChannel.GetMessageAsync(messageId) is not Discord.IUserMessage message)
                         {
                             Console.WriteLine($"[Scheduler] Message {messageId} not found in channel {channelId}.");
                             continue;
                         }
 
+                        // Ermittle den Kanalindex anhand der ChannelId aus Savedata
+                        int channelIndex = _channelIds.IndexOf(channelId);
+                        if (channelIndex < 0)
+                            channelIndex = 0;
+
                         Discord.Embed newEmbed;
-                        if (index == 0)
+                        if (channelIndex == 0)
                         {
-                            // First channel = full message
+                            // Erstkanal: Vollständige Nachricht
                             newEmbed = embedBuilder.WithDescription(allMessages).Build();
                         }
                         else
                         {
-                            // Other channels = single message
-                            string singleMessage = index - 1 < messages.Length ? messages[index - 1] : "No data available";
-                            var tierColor = HelperFactory.GetTierColor(index + 35);
+                            // Andere Kanäle: Einzelne Nachricht basierend auf dem ChannelIndex
+                            string singleMessage = (channelIndex - 1 < messages.Length) ? messages[channelIndex - 1] : "No data available";
+                            var tierColor = HelperFactory.GetTierColor(channelIndex + 35);
                             embedBuilder.Color = tierColor;
                             newEmbed = embedBuilder.WithDescription(singleMessage).Build();
                         }
 
                         await message.ModifyAsync(msg => msg.Embed = newEmbed);
                         Console.WriteLine($"[Scheduler] Updated message {messageId} in channel {channelId}");
-                        var teamIds = HelperFactory.SaveData.Franchises.Where(x => x.Name == HelperFactory.SaveData.DefaultFranchise).FirstOrDefault().Teams.Select(x => x.Id).ToList();
-                        if (relevantMatches.Where(x => x.TierId == index + 35).Any())
+
+                        var teamIds = HelperFactory.SaveData.Franchises
+                            .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise)?
+                            .Teams.Select(x => x.Id)
+                            .ToList() ?? new List<int>();
+
+                        if (relevantMatches.Any(x => x.TierId == channelIndex + 35))
                         {
-                            var upcomingMatch = relevantMatches.FirstOrDefault(x => x.TierId == index + 35);
+                            var upcomingMatch = relevantMatches.FirstOrDefault(x => x.TierId == channelIndex + 35);
                             if (upcomingMatch != null)
                             {
                                 var allTeams = HelperFactory.SaveData.Franchises.SelectMany(x => x.Teams).ToList();
@@ -276,20 +273,19 @@ namespace DXT_Resultmaker
                                 var opponentTeam = new Team();
                                 if (allIds.Contains(upcomingMatch.HomeTeamId ?? 0) && !teamIds.Contains(upcomingMatch.HomeTeamId ?? 0))
                                 {
-                                    opponentTeam = allTeams.Where(x => x.Id == upcomingMatch.HomeTeamId).FirstOrDefault();
+                                    opponentTeam = allTeams.FirstOrDefault(x => x.Id == upcomingMatch.HomeTeamId);
                                     opponentTeamName = opponentTeam?.Name ?? "N/V";
                                 }
                                 else if (allIds.Contains(upcomingMatch.AwayTeamId ?? 0) && !teamIds.Contains(upcomingMatch.AwayTeamId ?? 0))
                                 {
-                                    opponentTeam = allTeams.Where(x => x.Id == upcomingMatch.AwayTeamId).FirstOrDefault();
+                                    opponentTeam = allTeams.FirstOrDefault(x => x.Id == upcomingMatch.AwayTeamId);
                                     opponentTeamName = opponentTeam?.Name ?? "N/V";
                                 }
 
                                 string roleMention = "";
-                                if (HelperFactory.SaveData.RoleIds.Count > index)
+                                if (channelIndex > 0 && HelperFactory.SaveData.RoleIds.Count >= channelIndex)
                                 {
-                                    // Send a reminder message in the channel
-                                    roleMention = HelperFactory.SaveData.RoleIds[index-1] != 0 ? $"<@&{HelperFactory.SaveData.RoleIds[index-1]}>" : "";
+                                    roleMention = HelperFactory.SaveData.RoleIds[channelIndex - 1] != 0 ? $"<@&{HelperFactory.SaveData.RoleIds[channelIndex - 1]}>" : "";
                                 }
                                 await textChannel.SendMessageAsync(
                                     $"**Reminder 📢:** *Upcoming match against **{opponentTeamName}**. Date:* {HelperFactory.ToDiscordTimestamp(upcomingMatch.ScheduledDate)} {roleMention}");
@@ -301,7 +297,6 @@ namespace DXT_Resultmaker
                         Console.WriteLine($"[Scheduler] Failed to update message {messageId} in channel {channelId}: {ex.Message}");
                     }
                 }
-                index++;
             }
         }
         public void SetCurrentWeek(int week)
