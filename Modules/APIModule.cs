@@ -55,7 +55,7 @@ namespace DXT_Resultmaker
     {
         public Team Team { get; set; }
         public List<SignedUpPlayer> Players { get; set; }
-        public int tierId { get; set; }
+        public int TierId { get; set; }
 
     }
     public class SignedUpPlayer
@@ -65,7 +65,7 @@ namespace DXT_Resultmaker
         [JsonPropertyName("cmv")] public int? Cmv { get; set; }
         [JsonPropertyName("season_id")] public int? SeasonId { get; set; }
         [JsonPropertyName("team_id")] public int? TeamId { get; set; }
-        [JsonPropertyName("bonus")] public int? Bonus { get; set; } // unknown shape -> object/null
+        [JsonPropertyName("bonus")] public int? Bonus { get; set; } 
         [JsonPropertyName("captain")] public bool? Captain { get; set; } 
         [JsonPropertyName("status")] public string Status { get; set; }
         [JsonPropertyName("tier_id")] public int? TierId { get; set; }
@@ -200,7 +200,7 @@ namespace DXT_Resultmaker
             {
                 Team = team,
                 Players = playersInTeam,
-                tierId = tierId
+                TierId = tierId
             };
             return franchiseTeam;
         }

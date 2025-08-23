@@ -173,7 +173,25 @@ namespace DXT_Resultmaker.Modules
             await RespondAsync($"Removed this id: `{guildId}` ✅", ephemeral: true);
         }
 
-
+        [SlashCommand("set_channel", "Sets the channel for a specific tier to place fixtures.")]
+        public async Task SetFixtureChannel(string channelId, [Choice("Fixture", 0), Choice("Master", (int)TierId.Master), Choice("Elite", (int)TierId.Elite), Choice("Rival", (int)TierId.Rival),
+            Choice("Challenger", (int)TierId.Challenger), Choice("Prospect", (int)TierId.Prospect), Choice("Academy", (int)TierId.Academy)] int tierId)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+            if (!ulong.TryParse(channelId, out ulong id))
+            {
+                await RespondAsync("Invalid Id!");
+                return;
+            }
+            int offset = 0;
+            if (tierId != 0) offset = 35;
+            HelperFactory.ReplaceChannel(tierId - offset,id);
+            await RespondAsync($"Set the channel for `{HelperFactory.Tiers.Where(x => x.Value == tierId).FirstOrDefault().Key ?? "Fixture"}` to: <#{channelId}> ✅", ephemeral: true);
+        }
 
         [SlashCommand("set_seasonstart", "Set the season start date.")]
         public async Task SetSeasonStart(DateTime startDate)
@@ -405,6 +423,8 @@ namespace DXT_Resultmaker.Modules
                 var client = new ApiClient(HelperFactory.DefaultAPIUrl);
                 var matchesData = await client.GetMatchesAsync();
                 var allFranchiseData = await client.GetAllFranchisesAsync();
+                var allPlayers = await client.GetPlayerListAsync();
+                var allTeams = allFranchiseData.Select(y => y.Teams);
                 var franchiseData = allFranchiseData.Where(x => x.Name == franchise).FirstOrDefault();
                 if (franchiseData == null || matchesData == null)
                 {
@@ -418,6 +438,7 @@ namespace DXT_Resultmaker.Modules
                     {
                         continue; // Skip if the tier does not match
                     }
+
                     string tierMatches = "";
                     var teamMatches = matchesData.Where(x => x.Week == week && (x.HomeTeamId == teamTier.Id || x.AwayTeamId == teamTier.Id) && x.Format == "League Play").ToList();
                     if (teamMatches.Count > 0)
@@ -432,12 +453,19 @@ namespace DXT_Resultmaker.Modules
                             {
                                 continue; // Skip if teams are not found
                             }
-                            string currentMatchDate = match.ScheduledDate != null
-                                ? $"> {match.ScheduledDate:dd.MM.yyyy HH:mm}\n"
-                                : "> *Not Scheduled*\n";
+                            // Ermittle das gegnerische Team, das nicht zu franchiseData gehört
+                            Team otherTeam = teamTier.Id == homeTeam.Id ? awayTeam : homeTeam;
+                            string captainDisplay = "";
+                            // Angenommen, dass jedes Team eine Eigenschaft 'Captain' enthält
+                            if (allTeams.Any())
+                            {
+                                var captain = allPlayers.Where(y => y.TeamId == otherTeam.Id && y.Captain == true).FirstOrDefault();
+                                captainDisplay = $"> *Captain is: {captain?.User.Name ?? "N/V"}*\n\n";
+                            }
+                            string currentMatchDate = HelperFactory.ToDiscordTimestamp(match.ScheduledDate);
                             var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
                             var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
-                            tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n {currentMatchDate}";
+                            tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n> {currentMatchDate}{captainDisplay}";
                             //tierMatches += $"> `{match.ExternalId}`\n> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway} \n{currentMatchDate}";
                         }
                         allTierMatches += tierMatches + "\n";
@@ -487,6 +515,17 @@ namespace DXT_Resultmaker.Modules
 
             // Erstelle eine Liste der Tiernamen
             string tierRolesInfo = "";
+            string channelIdsInfo = "";
+            var channelIds = saveData.ChannelIds;
+            if (channelIds == null || channelIds.Count == 0)
+            {
+                channelIdsInfo += "None";
+            }
+            else if (channelIds.Count > 0)
+            {
+                channelIdsInfo += $"Fixture: <#{channelIds[0]}>\n";
+            }
+
             var tierNames = HelperFactory.Tiers
                 .OrderBy(kv => kv.Value)
                 .Select(kv => kv.Key)
@@ -502,10 +541,15 @@ namespace DXT_Resultmaker.Modules
                 {
                     tierRolesInfo += $"{tierNames[i]}: None\n";
                 }
+                if (channelIds is not null)
+                {
+                    if (channelIds.Count > i + 1 && channelIds[i + 1] != 0)
+                        channelIdsInfo += $"{tierNames[i]}: <#{channelIds[i + 1]}>\n";
+                }
             }
 
             var embed = new EmbedBuilder()
-                .WithTitle("Configs")
+                .WithTitle("⚙️ Configs")
                 .WithColor(new Discord.Color(saveData.MainColor))
                 .WithCurrentTimestamp()
                 .AddField("Default API URL", string.IsNullOrWhiteSpace(saveData.DefaultAPIUrl) ? "N/V" : saveData.DefaultAPIUrl, true)
@@ -518,7 +562,8 @@ namespace DXT_Resultmaker.Modules
                     (saveData.GuildIds != null && saveData.GuildIds.Any())
                         ? string.Join(", ", saveData.GuildIds)
                         : "None", false)
-                .AddField("Tier Rollen", tierRolesInfo, false);
+                .AddField("Tier Rollen", tierRolesInfo, false)
+                .AddField("Fixture Channels", channelIdsInfo, false);
 
             await RespondAsync(embed: embed.Build(), ephemeral: true);
         }
