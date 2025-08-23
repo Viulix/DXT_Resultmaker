@@ -3,6 +3,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using DXT_Resultmaker.Modules;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
 namespace DXT_Resultmaker
 {
@@ -24,10 +25,12 @@ namespace DXT_Resultmaker
             {
                 HelperFactory.Franchises = franchiseNames;
             }
+
             // Set the static properties outside helper factory
             AdminModule.Admins = HelperFactory.SaveData.Admins;
             AdminModule.TierDiscordRoleId = HelperFactory.SaveData.RoleIds;
-
+            DailyTaskScheduler.SetUpdateInterval(TimeSpan.FromMinutes(HelperFactory.SaveData.UpdateInterval));
+            DailyTaskScheduler.SetWeeklyTime(HelperFactory.SaveData.StartDate.DayOfWeek, HelperFactory.SaveData.StartDate.TimeOfDay);
             // Start with configuration and booting
             var config = new DiscordSocketConfig()
             {
@@ -55,6 +58,7 @@ namespace DXT_Resultmaker
             await _client.LoginAsync(TokenType.Bot, token);
             await _client.StartAsync();
             await _client.SetGameAsync("with you!", null);
+            await DailyTaskScheduler.Start();
             await Task.Delay(-1);
         }
         private Task Log(LogMessage msg)

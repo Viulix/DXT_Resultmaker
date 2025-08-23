@@ -275,7 +275,7 @@ namespace DXT_Resultmaker.Modules
             HelperFactory.SetTierColor(tierIndex, color);
             await RespondAsync($"Tier {tierIndex} color set to `#{hexValue:X}` ✅", ephemeral: true);
         }
-        [SlashCommand("set-weekly-time", "Set the weekly message time (day + HH:mm)")]
+        [SlashCommand("set_weekly_time", "Set the weekly message time (day + HH:mm)")]
         public async Task SetWeeklyTime(DayOfWeek day, string time)
         {
             if (!AdminModule.IsAdmin(Context.User.Id))
@@ -290,11 +290,17 @@ namespace DXT_Resultmaker.Modules
                 return;
             }
 
+            // Update the DailyTaskScheduler
             Program.DailyTaskScheduler.SetWeeklyTime(day, parsedTime);
+
+            // Save the updated values to SaveData
+            HelperFactory.SaveData.StartDate = DateTime.Today.AddDays((int)day - (int)DateTime.Today.DayOfWeek).Date + parsedTime;
+            HelperFactory.Save();
+
             await RespondAsync($"Weekly messages set to **{day} {time}** ✅", ephemeral: true);
         }
 
-        [SlashCommand("set-update-interval", "Set the update interval in minutes")]
+        [SlashCommand("set_update_interval", "Set the update interval in minutes")]
         public async Task SetUpdateInterval(int minutes)
         {
             if (!AdminModule.IsAdmin(Context.User.Id))
@@ -310,6 +316,9 @@ namespace DXT_Resultmaker.Modules
             }
 
             Program.DailyTaskScheduler.SetUpdateInterval(TimeSpan.FromMinutes(minutes));
+            HelperFactory.SaveData.UpdateInterval = minutes;
+            HelperFactory.Save();
+
             await RespondAsync($"Update interval set to **{minutes} minutes** ✅", ephemeral: true);
         }
 
