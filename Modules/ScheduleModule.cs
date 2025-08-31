@@ -46,7 +46,7 @@ namespace DXT_Resultmaker.Modules
                         tierMatches += $"{HelperFactory.MakeDiscordEmoteString(HelperFactory.Tiers.Where(x => x.Value == teamTier.TierId).FirstOrDefault().Key, HelperFactory.SaveData.EmoteGuild, true)} **{teamTier.Name}** - *{ApiClient.MakeTierIdToTiername(teamTier.TierId)}*\n";
                         foreach (var match in teamMatches)
                         {
-                            if (match is null || match.Format != "League Play") continue;
+                            if (match is null || match.Format != "League Play" || match.HomeTeamId is null || match.AwayTeamId is null) continue;
                             var awayTeam = ApiClient.GetTierteam((int)match.AwayTeamId, allFranchiseData);
                             var homeTeam = ApiClient.GetTierteam((int)match.HomeTeamId, allFranchiseData);
                             if (homeTeam is null || awayTeam is null)
@@ -66,6 +66,7 @@ namespace DXT_Resultmaker.Modules
                             var discordEmoteStringHome = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == homeTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
                             var discordEmoteStringAway = HelperFactory.MakeDiscordEmoteString(allFranchiseData.Where(x => x.Id == awayTeam.FranchiseEntryId).First().Prefix, HelperFactory.SaveData.EmoteGuild);
                             tierMatches += $"> {discordEmoteStringHome} {homeTeam.Name} vs {awayTeam.Name} {discordEmoteStringAway}\n> `{match.ExternalId}` \n {currentMatchDate}";
+                            Console.WriteLine(match.ScheduledDate);
                         }
                         allTierMatches += tierMatches + "\n";
                     }
