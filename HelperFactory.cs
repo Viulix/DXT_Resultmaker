@@ -306,7 +306,7 @@ namespace DXT_Resultmaker
         public static string RemoveCaptainLine(string input)
         {
             // Sucht nach "> *Captain is: ...*" bis zum nächsten Zeilenumbruch
-            return Regex.Replace(input, @"> \*Captain is:.*\*\r?\n", "");
+            return Regex.Replace(input, @"> \*Captain is:.*\*\r?\n", "> ");
         }
         public static void ReplaceChannel(int channelIndex, ulong channelId)
         {
