@@ -21,6 +21,7 @@ namespace DXT_Resultmaker
         private TimeSpan _updateInterval = TimeSpan.FromMinutes(1);
         private DayOfWeek _weeklyDay = DayOfWeek.Saturday;
         private TimeSpan _weeklyTime = new(23, 30, 0);
+        private List<int> relevantMatchesStored = [];
 
         public async Task Start()
         {
@@ -171,7 +172,7 @@ namespace DXT_Resultmaker
                 Week = 2,
                 HomeTeamId = 1210,
                 AwayTeamId = 1240,
-                ScheduledDate = HelperFactory.GetGermanTime().AddHours(2),
+                ScheduledDate = new DateTime(2025, 9, 1, 0, 30, 0),
                 Format = "League Play",
                 TierId = 37,
                 ExternalId = "N/V"
@@ -230,7 +231,7 @@ namespace DXT_Resultmaker
                         if (relevantMatches.Any(x => x.TierId == channelIndex + 35))
                         {
                             var upcomingMatch = relevantMatches.FirstOrDefault(x => x.TierId == channelIndex + 35);
-                            if (upcomingMatch != null)
+                            if (upcomingMatch != null && !relevantMatchesStored.Contains(upcomingMatch.Id))
                             {
                                 var allTeams = HelperFactory.SaveData.Franchises.SelectMany(x => x.Teams).ToList();
                                 var allIds = allTeams.Select(y => y.Id).ToList();
@@ -254,6 +255,7 @@ namespace DXT_Resultmaker
                                 }
                                 await textChannel.SendMessageAsync(
                                     $"**Reminder 📢:** *Upcoming match against **{opponentTeamName}**. Date:* {HelperFactory.ToDiscordTimestamp(upcomingMatch.ScheduledDate)} {roleMention}");
+                                relevantMatchesStored.Add(upcomingMatch.Id);
                             }
                         }
                     }
