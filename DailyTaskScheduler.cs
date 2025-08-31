@@ -24,7 +24,7 @@ namespace DXT_Resultmaker
 
         public async Task Start()
         {
-            _currentWeek = GetCurrentWeek(HelperFactory.SeasonStart);
+            _currentWeek = GetCurrentWeek(HelperFactory.SeasonStart) - 1;
             ScheduleWeeklyMessages();
             ScheduleUpdates();
         }
@@ -83,23 +83,20 @@ namespace DXT_Resultmaker
         /// </summary>
         private async Task SendWeeklyMessagesAsync()
         {
+            _currentWeek++;
             _channelIds = HelperFactory.SaveData.ChannelIds;
             _guildId = GetGuildId();
 
             Console.WriteLine($"[Scheduler {HelperFactory.GetGermanTime()}] Sending weekly messages for Week {_currentWeek}...");
 
-            if(_channelIds.Count == 0)
+            if (_channelIds.Count == 0)
             {
                 Console.WriteLine("[Scheduler] No channels configured for weekly messages.");
                 return;
             }
 
-            if(_messageIds.Count > 0)
+            if (_messageIds.Count > 0)
                 _messageIds.Clear();
-
-            // Generate all fixture messages
-            string allMessages = await HelperFactory.MakeFixtureMessage(_currentWeek);
-            var messages = allMessages.Split('ㅤ', StringSplitOptions.RemoveEmptyEntries);
 
             var guild = CommandHandler._client.Guilds.FirstOrDefault(x => x.Id == _guildId);
             if (guild == null)
@@ -107,48 +104,23 @@ namespace DXT_Resultmaker
                 Console.WriteLine("[Scheduler] Guild not found!");
                 return;
             }
-            // Get banner and logo from default franchise
-            var franchise = HelperFactory.SaveData.Franchises
-                .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise);
-            var bannerUrl = franchise?.Banner ?? " "; 
-            var logoUrl = franchise?.Logo ?? " "; 
 
-
-            // Create base embed builder
-            var embedBuilder = new Discord.EmbedBuilder()
-                .WithColor(new Discord.Color(HelperFactory.SaveData.MainColor))
-                .WithTitle($"Fixtures for Week {_currentWeek}")
-                .WithImageUrl(bannerUrl)
-                .WithThumbnailUrl(logoUrl);
             int index = 0;
+            var embedList = CreateMessageEmbed();
             foreach (ulong channelId in _channelIds)
             {
                 var channel = guild.Channels.FirstOrDefault(x => x.Id == channelId);
+
                 if (channel is Discord.ITextChannel textChannel)
                 {
-                    Discord.Embed embedToSend;
-
-                    if (index == 0)
-                    {
-                        // First channel gets the full message as description
-                        embedToSend = embedBuilder.WithDescription(HelperFactory.RemoveCaptainLine(allMessages)).Build();
-                    }
-                    else
-                    {
-                        // Other channels get only the corresponding single message
-                        string singleMessage = index - 1 < messages.Length ? messages[index - 1] : "No data available";
-                        var tierColor = HelperFactory.GetTierColor(index + 35);
-                        embedBuilder.Color = tierColor;
-                        embedToSend = embedBuilder.WithDescription(singleMessage).Build();
-                    }
 
                     // Send the message to Discord
-                    var sentMessage = await textChannel.SendMessageAsync(embed: embedToSend);
+                    var sentMessage = await textChannel.SendMessageAsync(embed: embedList[index].Build());
 
                     // Store the messageId for later updates
                     _messageIds[channelId] = sentMessage.Id;
 
-                    Console.WriteLine($"[Scheduler] Sent message to channel {channelId}, messageId={sentMessage.Id}");
+                    Console.WriteLine($"[Scheduler {HelperFactory.GetGermanTime()}] Sent message to channel {channelId}, messageId={sentMessage.Id}");
                 }
                 else
                 {
@@ -157,7 +129,6 @@ namespace DXT_Resultmaker
                 Thread.Sleep(50);
                 index++;
             }
-            _currentWeek++;
         }
 
         /// <summary>
@@ -188,6 +159,7 @@ namespace DXT_Resultmaker
                 .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise);
             var bannerUrl = franchise?.Banner ?? " ";
             var logoUrl = franchise?.Logo ?? " ";
+
             // Filter matches to include only those belonging to the default franchise and within the next 2 hours (+/- 5 minutes)
             var now = HelperFactory.GetGermanTime();
             var timeWindowStart = now.AddMinutes(-5);
@@ -210,13 +182,8 @@ namespace DXT_Resultmaker
                 return;
             }
 
-            // Base embed
-            var embedBuilder = new Discord.EmbedBuilder()
-                .WithColor(HelperFactory.SaveData.MainColor)
-                .WithTitle($"Fixtures for Week {_currentWeek}")
-                .WithImageUrl(bannerUrl)
-                .WithThumbnailUrl(logoUrl);
-
+            var embedList = CreateMessageEmbed();
+            int index = 0;
             foreach (var kvp in _messageIds)
             {
                 ulong channelId = kvp.Key;
@@ -238,23 +205,8 @@ namespace DXT_Resultmaker
                         if (channelIndex < 0)
                             channelIndex = 0;
 
-                        Discord.Embed newEmbed;
-                        if (channelIndex == 0)
-                        {
-                            // Erstkanal: Vollständige Nachricht
-                            newEmbed = embedBuilder.WithDescription(allMessages).Build();
-                        }
-                        else
-                        {
-                            // Andere Kanäle: Einzelne Nachricht basierend auf dem ChannelIndex
-                            string singleMessage = (channelIndex - 1 < messages.Length) ? messages[channelIndex - 1] : "No data available";
-                            var tierColor = HelperFactory.GetTierColor(channelIndex + 35);
-                            embedBuilder.Color = tierColor;
-                            newEmbed = embedBuilder.WithDescription(singleMessage).Build();
-                        }
-
-                        await message.ModifyAsync(msg => msg.Embed = newEmbed);
-                        Console.WriteLine($"[Scheduler] Updated message {messageId} in channel {channelId}");
+                        await message.ModifyAsync(msg => msg.Embed = embedList[index].Build());
+                        Console.WriteLine($"[Scheduler {HelperFactory.GetGermanTime()}] Updated message {messageId} in channel {channelId}");
 
                         var teamIds = HelperFactory.SaveData.Franchises
                             .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise)?
@@ -296,6 +248,7 @@ namespace DXT_Resultmaker
                         Console.WriteLine($"[Scheduler] Failed to update message {messageId} in channel {channelId}: {ex.Message}");
                     }
                 }
+                index++;
             }
         }
         public void SetCurrentWeek(int week)
@@ -312,8 +265,6 @@ namespace DXT_Resultmaker
             var diffDays = (now.Date - seasonStart.Date).Days;
             return (diffDays / 7) + 1;
         }
-
-
 
         /// <summary>
         /// Dispose timers when shutting down the scheduler.
@@ -333,6 +284,46 @@ namespace DXT_Resultmaker
                 }
             }
             return 0;
+        }
+        public List<Discord.EmbedBuilder> CreateMessageEmbed()
+        {
+            // Generate all fixture messages
+            string allMessages = HelperFactory.MakeFixtureMessage(_currentWeek).Result;
+            var messages = allMessages.Split('ㅤ', StringSplitOptions.RemoveEmptyEntries);
+            // Get banner and logo from default franchise
+            var franchise = HelperFactory.SaveData.Franchises
+                .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise);
+            var bannerUrl = franchise?.Banner ?? " ";
+            var logoUrl = franchise?.Logo ?? " ";
+
+            int index = 0;
+            List<Discord.EmbedBuilder> embedList = [];
+            foreach (ulong channelId in _channelIds)
+            {
+                // Create base embed builder
+                var embedBuilder = new Discord.EmbedBuilder()
+                    .WithColor(new Discord.Color(HelperFactory.SaveData.MainColor))
+                    .WithTitle($"Fixtures for Week {_currentWeek}")
+                    .WithImageUrl(bannerUrl)
+                    .WithThumbnailUrl(logoUrl);
+
+                if (index == 0)
+                {
+                    // First channel gets the full message as description
+                    embedBuilder.WithDescription(HelperFactory.RemoveCaptainLine(allMessages).Replace("> \nㅤ\n", "\n"));
+                }
+                else
+                {
+                    // Other channels get only the corresponding single message
+                    string singleMessage = index - 1 < messages.Length ? messages[index - 1] : "No data available";
+                    var tierColor = HelperFactory.GetTierColor(index + 35);
+                    embedBuilder.Color = tierColor;
+                    embedBuilder.WithDescription(singleMessage);
+                }
+                embedList.Add(embedBuilder);
+                index++;
+            }
+            return embedList;
         }
     }
 }
