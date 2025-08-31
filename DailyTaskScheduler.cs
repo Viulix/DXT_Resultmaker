@@ -37,7 +37,7 @@ namespace DXT_Resultmaker
 
         public void SetWeeklyTime(DayOfWeek day, TimeSpan time)
         {
-            Console.WriteLine($"[Scheduler{HelperFactory.GetGermanTime()}] Setting weekly message time to {day} at {time}");
+            Console.WriteLine($"[Scheduler {HelperFactory.GetGermanTime()}] Setting weekly message time to {day} at {time}");
             _weeklyDay = day;
             _weeklyTime = time;
             ScheduleWeeklyMessages(); // Neu starten
@@ -164,6 +164,20 @@ namespace DXT_Resultmaker
             var now = HelperFactory.GetGermanTime();
             var timeWindowStart = now.AddMinutes(-5);
             var timeWindowEnd = now.AddHours(2).AddMinutes(5);
+
+            var dummyMatch = new Match
+            {
+                Id = 102000,
+                Week = 2,
+                HomeTeamId = 1210,
+                AwayTeamId = 1240,
+                ScheduledDate = HelperFactory.GetGermanTime().AddHours(2),
+                Format = "League Play",
+                TierId = 37,
+                ExternalId = "N/V"
+            };
+            allMatches.Add(dummyMatch); // Füge ein Dummy-Match hinzu, um Fehler zu vermeiden
+
 
             var relevantMatches = allMatches.Where(match =>
             {
