@@ -246,12 +246,7 @@ namespace DXT_Resultmaker
         {
             if (date == null)
                 return $"{fallback}\n";
-
-            // Zeitzone Berlin (beachtet Sommer-/Winterzeit automatisch)
-            var berlinTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Berlin");
-            var berlinTime = TimeZoneInfo.ConvertTime(date.Value, berlinTimeZone);
-
-            long unixSeconds = ((DateTimeOffset)berlinTime).ToUnixTimeSeconds();
+            long unixSeconds = ((DateTimeOffset)date).ToUnixTimeSeconds();
 
             return $"<t:{unixSeconds}:{format}>\n";
         }
@@ -325,7 +320,6 @@ namespace DXT_Resultmaker
         public static DateTime GetGermanTime()
         {
             DateTime utcNow = DateTime.UtcNow;
-
             try
             {
                 // Für Windows
