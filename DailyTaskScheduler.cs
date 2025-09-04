@@ -157,12 +157,12 @@ namespace DXT_Resultmaker
             var allMatches = await client.GetMatchesAsync();
 
             var franchise = HelperFactory.SaveData.Franchises
-                .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise);
+                .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise) ?? new Franchise();
             var bannerUrl = franchise?.Banner ?? " ";
             var logoUrl = franchise?.Logo ?? " ";
 
             // Filter matches to include only those belonging to the default franchise and within the next 2 hours (+/- 5 minutes)
-            var now = HelperFactory.GetGermanTime();
+            var now = DateTime.UtcNow;
             var timeWindowStart = now.AddMinutes(-5);
             var timeWindowEnd = now.AddHours(2).AddMinutes(5);
 
@@ -175,7 +175,7 @@ namespace DXT_Resultmaker
                 var isWithinTimeWindow = matchTime >= timeWindowStart && matchTime <= timeWindowEnd;
                 return isDefaultFranchise && isWithinTimeWindow;
             }).ToList();
-
+            Console.WriteLine($"[Scheduler: {HelperFactory.GetGermanTime()}] Found {relevantMatches.Count} matches in the timeframe {timeWindowStart} - {timeWindowEnd} (UTC)");
             var guild = CommandHandler._client.Guilds.FirstOrDefault(x => x.Id == _guildId);
             if (guild == null)
             {
