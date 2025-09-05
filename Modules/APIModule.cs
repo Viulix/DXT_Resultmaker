@@ -81,7 +81,7 @@ namespace DXT_Resultmaker
         [JsonPropertyName("season_id")] public int SeasonId { get; set; }
         [JsonPropertyName("stage")] public string? Stage { get; set; }
         [JsonPropertyName("format")] public string? Format { get; set; }
-        [JsonPropertyName("tierId")] public int? TierId { get; set; }
+        [JsonPropertyName("tier_id")] public int TierId { get; set; }
         [JsonPropertyName("week")] public int? Week { get; set; }
         [JsonPropertyName("team1_id")] public int? HomeTeamId { get; set; }
         [JsonPropertyName("team2_id")] public int? AwayTeamId { get; set; }
@@ -209,7 +209,7 @@ namespace DXT_Resultmaker
             var resp = await GetAsync<List<Match>>("/series-manager/EU/series");
             if (!resp.Success)
                 throw new ApiException(resp.Message);
-            return resp.Data ?? new List<Match>();
+            return resp.Data ?? [];
         }
         public async Task<List<Match>> GetMatchesFromTierTeamAsync(int teamId, int week = -1)
         {
