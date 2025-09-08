@@ -611,6 +611,26 @@ namespace DXT_Resultmaker.Modules
 
             await RespondAsync($"Reminder minutes set to **{minutes} minutes** ✅", ephemeral: true);
         }
+        [SlashCommand("set_schedule_offset", "Sets an offset for times from the API!")]
+        public async Task SetScheduleOffset(int offsetInHours)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            if (offsetInHours < 0)
+            {
+                await RespondAsync("This number must be >= 0.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.SaveData.MatchTimeOffset = offsetInHours;
+            HelperFactory.Save();
+
+            await RespondAsync($"Successfully set the offset to **{offsetInHours} h** ✅", ephemeral: true);
+        }
     }
 
 }
