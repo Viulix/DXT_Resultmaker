@@ -620,12 +620,6 @@ namespace DXT_Resultmaker.Modules
                 return;
             }
 
-            if (offsetInHours < 0)
-            {
-                await RespondAsync("This number must be >= 0.", ephemeral: true);
-                return;
-            }
-
             HelperFactory.SaveData.MatchTimeOffset = offsetInHours;
             HelperFactory.Save();
 

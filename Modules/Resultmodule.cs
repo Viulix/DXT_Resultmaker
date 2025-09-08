@@ -29,43 +29,25 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
                 await FollowupAsync("Did not find a team for this franchise.");
                 return;
             }
-            var msg = String.Join("\n", franchiseTeam.Players.Select(x => x.User.Name + $" `{x.Cmv}`"));
-            string field1 = "";
-            string field2 = "";
-            string field3 = "";
-            foreach (var player in franchiseTeam.Players)
-            {
-                if (player.Captain == true)
-                {
-                    field1 += "`C`\n";
-                }
-                else
-                {
-                    field1 += "ㅤ\n";
-                }
-                    field2 += $"`{player.User.Name}`\n";
-                if(player.Cmv is not null) field3 += $"`{player.Cmv}`\n";
-                else field3 += $"`N/V`\n";
-            }
+
+            var playerDetails = franchiseTeam.Players
+                .Select(player => $"{(player.Captain == true ? "(C) " : "")}{player.User.Name} `{(player.Cmv.HasValue ? player.Cmv.Value.ToString() : "N/V")}`")
+                .ToList();
+
+            var playerFieldContent = string.Join("\n", playerDetails);
             var titel = franchiseTeam.Team.Name;
 
-            var userName = Context.Guild.Users.Where(x => x.Id == Context.User.Id).FirstOrDefault().Nickname;
+            var userName = Context.Guild.Users.Where(x => x.Id == Context.User.Id).FirstOrDefault()?.Nickname;
             userName ??= Context.User.GlobalName;
 
             var emb = new EmbedBuilder()
                 .WithColor(HelperFactory.GetTierColor(tier))
                 .WithTitle(HelperFactory.MakeDiscordEmoteString(HelperFactory.Tiers.Where(x => x.Value == tier).FirstOrDefault().Key, HelperFactory.SaveData.EmoteGuild, true) + " " + franchiseName + $" - \"{titel}\"\n")
-                .WithDescription("*Team Overview*");
-            if(field1 != "")
-            {
-                emb.AddField("Captain", field1, true);
-            }
-            emb.AddField("Player", field2, true)
-               .AddField("CMV", field3, true)
-               .WithCurrentTimestamp()
-               .WithThumbnailUrl(franchise.Logo)
-               .WithFooter("Requested By " + userName, Context.User.GetAvatarUrl());
-
+                .WithDescription("*Team Overview*")
+                .AddField("Players", playerFieldContent, false)
+                .WithCurrentTimestamp()
+                .WithThumbnailUrl(franchise.Logo)
+                .WithFooter("Requested By " + userName, Context.User.GetAvatarUrl());
 
             await FollowupAsync(embed: emb.Build());
         }
