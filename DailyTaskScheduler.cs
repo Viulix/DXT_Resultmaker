@@ -22,6 +22,7 @@ namespace DXT_Resultmaker
         private DayOfWeek _weeklyDay = DayOfWeek.Saturday;
         private TimeSpan _weeklyTime = new(23, 30, 0);
         private List<int> relevantMatchesStored = [];
+        private int _reminderMinutes = 120;
 
         public async Task Start()
         {
@@ -74,6 +75,10 @@ namespace DXT_Resultmaker
                 null, initialDelay, _updateInterval);
         }
 
+        public void SetReminderMinutes(int minutes)
+        {
+            _reminderMinutes = minutes;
+        }
         // Manual triggers
         public async Task RunWeeklyNow() => await SendWeeklyMessagesAsync();
         public async Task RunUpdateNow() => await UpdateFixtureMessagesAsync();
@@ -164,7 +169,7 @@ namespace DXT_Resultmaker
             // Filter matches to include only those belonging to the default franchise and within the next 2 hours (+/- 5 minutes)
             var now = DateTime.UtcNow;
             var timeWindowStart = now.AddMinutes(-5);
-            var timeWindowEnd = now.AddHours(2).AddMinutes(5);
+            var timeWindowEnd = now.AddMinutes(_reminderMinutes + 5);
 
             var relevantMatches = allMatches.Where(match =>
             {

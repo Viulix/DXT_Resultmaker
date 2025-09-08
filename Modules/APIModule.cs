@@ -209,6 +209,16 @@ namespace DXT_Resultmaker
             var resp = await GetAsync<List<Match>>("/series-manager/EU/series");
             if (!resp.Success)
                 throw new ApiException(resp.Message);
+
+            // Add MatchTimeOffset to each match's ScheduledDate. This is a hotfix for wrong times in API
+            foreach (var match in resp.Data)
+            {
+                if (match.ScheduledDate.HasValue)
+                {
+                    match.ScheduledDate = match.ScheduledDate.Value.AddHours(HelperFactory.SaveData.MatchTimeOffset);
+                }
+            }
+
             return resp.Data ?? [];
         }
         public async Task<List<Match>> GetMatchesFromTierTeamAsync(int teamId, int week = -1)

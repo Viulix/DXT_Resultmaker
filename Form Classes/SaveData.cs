@@ -16,5 +16,7 @@
         public uint MainColor { get; set; } = new Discord.Color(0x000000);
         public static Dictionary<int, uint> TierColors { get; set; } = HelperFactory.TierColors;
         public int UpdateInterval { get; set; } = 1;
+        public int ReminderMinutes { get; set; } = 120;
+        public int MatchTimeOffset { get; set; } = 0;
     }
 }

@@ -70,6 +70,7 @@ namespace DXT_Resultmaker.Modules
             await RespondAsync($"Role for tier {tierIndex} set to {role.Mention} ✅", ephemeral: true);
         }
 
+
         [SlashCommand("set_franchises", "Set the default franchise.")]
         public async Task SetFranchises()
         {
@@ -588,6 +589,41 @@ namespace DXT_Resultmaker.Modules
                 .AddField("Fixture Channels", channelIdsInfo, false);
 
             await RespondAsync(embed: embed.Build(), ephemeral: true);
+        }
+        [SlashCommand("set_reminder_minutes", "Set the reminder minutes for scheduled tasks.")]
+        public async Task SetReminderMinutes(int minutes)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            if (minutes < 0)
+            {
+                await RespondAsync("Reminder minutes must be >= 0.", ephemeral: true);
+                return;
+            }
+
+            Program.DailyTaskScheduler.SetReminderMinutes(minutes);
+            HelperFactory.SaveData.ReminderMinutes = minutes;
+            HelperFactory.Save();
+
+            await RespondAsync($"Reminder minutes set to **{minutes} minutes** ✅", ephemeral: true);
+        }
+        [SlashCommand("set_schedule_offset", "Sets an offset for times from the API!")]
+        public async Task SetScheduleOffset(int offsetInHours)
+        {
+            if (!AdminModule.IsAdmin(Context.User.Id))
+            {
+                await RespondAsync("You are not an admin.", ephemeral: true);
+                return;
+            }
+
+            HelperFactory.SaveData.MatchTimeOffset = offsetInHours;
+            HelperFactory.Save();
+
+            await RespondAsync($"Successfully set the offset to **{offsetInHours} h** ✅", ephemeral: true);
         }
     }
 
