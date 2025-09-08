@@ -3,7 +3,6 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using DXT_Resultmaker.Modules;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
 namespace DXT_Resultmaker
 {
@@ -31,6 +30,7 @@ namespace DXT_Resultmaker
             AdminModule.TierDiscordRoleId = HelperFactory.SaveData.RoleIds;
             DailyTaskScheduler.SetUpdateInterval(TimeSpan.FromMinutes(HelperFactory.SaveData.UpdateInterval));
             DailyTaskScheduler.SetWeeklyTime(HelperFactory.SaveData.StartDate.DayOfWeek, HelperFactory.SaveData.StartDate.TimeOfDay);
+            DailyTaskScheduler.SetReminderMinutes(HelperFactory.SaveData.ReminderMinutes);
             // Start with configuration and booting
             var config = new DiscordSocketConfig()
             {
