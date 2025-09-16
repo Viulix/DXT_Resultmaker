@@ -173,9 +173,9 @@ namespace DXT_Resultmaker
             }
             return tier.Key;
         }
-        public async Task<List<SignedUpPlayer>> GetPlayerListAsync()
+        public async Task<List<SignedUpPlayer>> GetPlayerListAsync(int limit = 50000)
         {
-            var resp = await GetAsync<List<SignedUpPlayer>>("/league-manager/EU/players");
+            var resp = await GetAsync<List<SignedUpPlayer>>($"/league-manager/EU/players?limit={limit}");
             if (!resp.Success)
                 throw new ApiException(resp.Message);
             return resp.Data ?? new List<SignedUpPlayer>();

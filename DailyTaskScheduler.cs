@@ -12,7 +12,7 @@ namespace DXT_Resultmaker
     public class DailyTaskScheduler : IDisposable
     {
         private static List<ulong> _channelIds = []; // The list of channel IDs where messages should be sent
-        private readonly Dictionary<ulong, ulong> _messageIds = []; // Maps channelId -> messageId
+        private Dictionary<ulong, ulong> _messageIds = []; // Maps channelId -> messageId
         private Timer? _updateTimer;
         private Timer? _weeklyMessageTimer;
         private int _currentWeek; // Keeps track of the week index
@@ -21,12 +21,11 @@ namespace DXT_Resultmaker
         private TimeSpan _updateInterval = TimeSpan.FromMinutes(1);
         private DayOfWeek _weeklyDay = DayOfWeek.Saturday;
         private TimeSpan _weeklyTime = new(23, 30, 0);
-        private List<int> relevantMatchesStored = [];
+        public List<int> relevantMatchesStored = [];
         private int _reminderMinutes = 120;
 
         public async Task Start()
         {
-            _currentWeek = GetCurrentWeek(HelperFactory.SeasonStart) - 1;
             ScheduleWeeklyMessages();
             ScheduleUpdates();
         }
@@ -61,6 +60,7 @@ namespace DXT_Resultmaker
 
             _weeklyMessageTimer = new Timer(async _ => await SendWeeklyMessagesAsync(),
                 null, initialDelay, weeklyInterval);
+            HelperFactory.Save();
         }
 
         private void ScheduleUpdates()
@@ -73,6 +73,7 @@ namespace DXT_Resultmaker
 
             _updateTimer = new Timer(async _ => await UpdateFixtureMessagesAsync(),
                 null, initialDelay, _updateInterval);
+            HelperFactory.Save();
         }
 
         public void SetReminderMinutes(int minutes)
@@ -90,6 +91,7 @@ namespace DXT_Resultmaker
         private async Task SendWeeklyMessagesAsync()
         {
             _currentWeek++;
+            if (_currentWeek > 9) _currentWeek = 9;
             _channelIds = HelperFactory.SaveData.ChannelIds;
             _guildId = GetGuildId();
 
@@ -135,6 +137,8 @@ namespace DXT_Resultmaker
                 Thread.Sleep(50);
                 index++;
             }
+            HelperFactory.SaveData.MessageIds = _messageIds;
+            HelperFactory.Save();
         }
 
         /// <summary>
@@ -165,6 +169,7 @@ namespace DXT_Resultmaker
                 .FirstOrDefault(x => x.Name == HelperFactory.SaveData.DefaultFranchise) ?? new Franchise();
             var bannerUrl = franchise?.Banner ?? " ";
             var logoUrl = franchise?.Logo ?? " ";
+            var allPlayers = await client.GetPlayerListAsync();
 
             // Filter matches to include only those belonging to the default franchise and within the next 2 hours (+/- 5 minutes)
             var now = DateTime.UtcNow;
@@ -238,14 +243,15 @@ namespace DXT_Resultmaker
                                     opponentTeam = allTeams.FirstOrDefault(x => x.Id == upcomingMatch.AwayTeamId);
                                     opponentTeamName = opponentTeam?.Name ?? "N/V";
                                 }
-
+                                var captain = allPlayers.Where(y => y.TeamId == opponentTeam.Id && y.Captain == true).FirstOrDefault();
+                                var opponentCaptainName = captain?.User.Name ?? "N/V";
                                 string roleMention = "";
                                 if (channelIndex > 0 && HelperFactory.SaveData.RoleIds.Count >= channelIndex)
                                 {
                                     roleMention = HelperFactory.SaveData.RoleIds[channelIndex - 1] != 0 ? $"<@&{HelperFactory.SaveData.RoleIds[channelIndex - 1]}>" : "";
                                 }
                                 await textChannel.SendMessageAsync(
-                                    $"**Reminder 📢:** *Upcoming match against **{opponentTeamName}**. Date:* {HelperFactory.ToDiscordTimestamp(upcomingMatch.ScheduledDate)} {roleMention}");
+                                    $"**Reminder 📢:** *Upcoming match against **{opponentTeamName}**. Date:* {HelperFactory.ToDiscordTimestamp(upcomingMatch.ScheduledDate)} {roleMention}\n *Captain is: {opponentCaptainName}*");
                                 relevantMatchesStored.Add(upcomingMatch.Id);
                             }
                         }
@@ -257,10 +263,18 @@ namespace DXT_Resultmaker
                 }
                 index++;
             }
+            HelperFactory.SaveData.RelevantMatchesStored = relevantMatchesStored;
+            HelperFactory.Save();
         }
         public void SetCurrentWeek(int week)
         {
             _currentWeek = week;
+            HelperFactory.SaveData.LastScheduleWeek = week;
+            HelperFactory.Save();
+        }
+        public void SetMessageIds(Dictionary<ulong, ulong> messageIds)
+        {
+            _messageIds = messageIds;
         }
         public static int GetCurrentWeek(DateTime seasonStart)
         {

@@ -35,6 +35,7 @@ public class Resultmodule : InteractionModuleBase<SocketInteractionContext>
                 .ToList();
 
             var playerFieldContent = string.Join("\n", playerDetails);
+            if (playerFieldContent == "") playerFieldContent = "*No valid api data found*";
             var titel = franchiseTeam.Team.Name;
 
             var userName = Context.Guild.Users.Where(x => x.Id == Context.User.Id).FirstOrDefault()?.Nickname;
