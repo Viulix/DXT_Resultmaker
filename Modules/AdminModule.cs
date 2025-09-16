@@ -581,6 +581,8 @@ namespace DXT_Resultmaker.Modules
                 .AddField("Season Start", saveData.SeasonStart.ToString("yyyy-MM-dd"), true)
                 .AddField("Season Week", saveData.SeasonCalenderWeek.ToString(), true)
                 .AddField("Admins Count", saveData.Admins?.Count.ToString() ?? "0", true)
+                .AddField("Last Sent Week", HelperFactory.SaveData.LastScheduleWeek, true)
+                .AddField("Reminder minutes", HelperFactory.SaveData.ReminderMinutes, true)
                 .AddField("Guild IDs",
                     (saveData.GuildIds != null && saveData.GuildIds.Any())
                         ? string.Join(", ", saveData.GuildIds)

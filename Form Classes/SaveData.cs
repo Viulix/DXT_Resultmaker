@@ -18,5 +18,8 @@
         public int UpdateInterval { get; set; } = 1;
         public int ReminderMinutes { get; set; } = 120;
         public int MatchTimeOffset { get; set; } = 0;
+        public Dictionary<ulong, ulong> MessageIds { get; set; } = [];
+        public int LastScheduleWeek { get; set; } = 1;
+        public List<int> RelevantMatchesStored = [];
     }
 }
